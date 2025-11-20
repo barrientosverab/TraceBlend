@@ -1,3 +1,4 @@
+import { crearLoteCompra } from '../services/lotesService';
 import React, { useState } from 'react'; // Agregamos useState
 import { Save, Truck } from 'lucide-react';
 
@@ -22,9 +23,27 @@ export function Recepcion() {
   };
 
   // 3. Función para simular el guardado
-  const handleSubmit = () => {
-    console.log("Enviando datos a Supabase...", formData);
-    alert(`¡Lote de ${formData.proveedor} guardado correctamente!`);
+  const handleSubmit = async () => {
+    try {
+      // Feedback visual simple
+      const btn = document.activeElement;
+      if(btn) btn.innerText = "Guardando...";
+
+      // Llamamos al backend
+      await crearLoteCompra(formData);
+      
+      alert("✅ ¡Lote registrado en la nube exitosamente!");
+      
+      // Limpiamos el formulario
+      setFormData({
+        proveedor: '', origen: '', peso: '', variedad: '', humedad: '', notas: ''
+      });
+      
+    } catch (error) {
+      alert("❌ Error al guardar: " + error.message);
+    } finally {
+      if(btn) btn.innerText = "Guardar Lote"; // Restauramos texto
+    }
   };
   return (
     <div className="max-w-4xl mx-auto">
