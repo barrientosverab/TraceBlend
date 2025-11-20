@@ -1,7 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react'; // Agregamos useState
 import { Save, Truck } from 'lucide-react';
 
 export function Recepcion() {
+  // 1. Aquí guardamos los datos del formulario
+  const [formData, setFormData] = useState({
+    proveedor: '',
+    origen: '',
+    peso: '',
+    variedad: '',
+    humedad: '',
+    notas: ''
+  });
+
+  // 2. Función que se ejecuta cuando el usuario escribe
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // 3. Función para simular el guardado
+  const handleSubmit = () => {
+    console.log("Enviando datos a Supabase...", formData);
+    alert(`¡Lote de ${formData.proveedor} guardado correctamente!`);
+  };
   return (
     <div className="max-w-4xl mx-auto">
       {/* Encabezado de la Página */}
@@ -24,7 +48,10 @@ export function Recepcion() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Nombre del Proveedor / Finca</label>
               <input 
-                type="text" 
+                type="text"
+                name="proveedor"   // <--- IMPORTANTE: Debe coincidir con el estado
+                value={formData.proveedor} // <--- Conecta con el estado
+                onChange={handleChange}    // <--- Escucha cambios
                 placeholder="Ej: Finca Santa Cruz"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
               />
@@ -34,6 +61,9 @@ export function Recepcion() {
               <label className="text-sm font-medium text-gray-700">Ubicación / Origen</label>
               <input 
                 type="text" 
+                name="origen"   // <--- IMPORTANTE: Debe coincidir con el estado
+                value={formData.origen} // <--- Conecta con el estado
+                onChange={handleChange}    // <--- Escucha cambios
                 placeholder="Ej: Caranavi, La Paz"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
               />
@@ -46,6 +76,9 @@ export function Recepcion() {
               <label className="text-sm font-medium text-gray-700">Peso Ingreso (Kg)</label>
               <input 
                 type="number" 
+                name="peso"   // <--- IMPORTANTE: Debe coincidir con el estado
+                value={formData.peso} // <--- Conecta con el estado
+                onChange={handleChange}    // <--- Escucha cambios
                 placeholder="0.00"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
               />
@@ -55,6 +88,7 @@ export function Recepcion() {
               <label className="text-sm font-medium text-gray-700">Variedad</label>
               <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
                 <option value="">Seleccionar...</option>
+                <option value="blend">Blend</option>
                 <option value="typica">Typica</option>
                 <option value="caturra">Caturra</option>
                 <option value="geisha">Geisha</option>
@@ -65,7 +99,10 @@ export function Recepcion() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">% Humedad (Opcional)</label>
               <input 
-                type="number" 
+                type="number"
+                name="humedad"   // <--- IMPORTANTE: Debe coincidir con el estado
+                value={formData.humedad} // <--- Conecta con el estado
+                onChange={handleChange}    // <--- Escucha cambios
                 placeholder="10-12%"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
               />
@@ -89,7 +126,7 @@ export function Recepcion() {
           <button className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors">
             Cancelar
           </button>
-          <button className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 shadow-sm hover:shadow transition-all active:scale-95">
+          <button onClick={handleSubmit} className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 shadow-sm hover:shadow transition-all active:scale-95">
             <Save size={18} />
             Guardar Lote
           </button>
