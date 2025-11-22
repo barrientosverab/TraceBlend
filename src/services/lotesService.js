@@ -1,25 +1,28 @@
-import { supabase } from './supabaseClient'; // Asegúrate que este archivo existe desde pasos anteriores
+import { supabase } from './supabaseClient';
 
-export const crearLoteCompra = async (datosFormulario) => {
-  // Mapeamos los nombres del formulario a las columnas de la BD
-  const loteParaGuardar = {
-    proveedor: datosFormulario.proveedor,
-    origen: datosFormulario.origen,
-    peso_kg: parseFloat(datosFormulario.peso), // Convertimos texto a número
-    variedad: datosFormulario.variedad,
-    humedad_porcentaje: datosFormulario.humedad ? parseFloat(datosFormulario.humedad) : null,
-    notas: datosFormulario.notas
+// Crear nuevo lote de ingreso
+export const crearLote = async (datos) => {
+  // Generamos un código de lote simple: L-{AÑO}-{RANDOM}
+  const codigo = `L-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const loteData = {
+    codigo_lote: codigo,
+    proveedor_id: datos.proveedor_id,
+    fecha_compra: datos.fecha_compra,
+    peso_ingreso_kg: parseFloat(datos.peso),
+    estado_ingreso: datos.estado, // Cereza, Pergamino, etc.
+    variedad: datos.variedad,
+    proceso: datos.proceso,
+    humedad_ingreso: datos.humedad ? parseFloat(datos.humedad) : null,
+    notas: datos.notas
   };
 
   const { data, error } = await supabase
-    .from('lotes_compra')
-    .insert([loteParaGuardar])
-    .select();
+    .from('lotes')
+    .insert([loteData])
+    .select()
+    .single();
 
-  if (error) {
-    console.error("Error guardando lote:", error);
-    throw error;
-  }
-
+  if (error) throw error;
   return data;
 };

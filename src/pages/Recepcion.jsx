@@ -1,156 +1,133 @@
-import { crearLoteCompra } from '../services/lotesService';
-import React, { useState } from 'react'; // Agregamos useState
-import { Save, Truck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Truck, Coffee } from 'lucide-react';
+import { crearLote } from '../services/lotesService';
+import { getProveedores } from '../services/proveedoresService';
 
 export function Recepcion() {
-  // 1. Aquí guardamos los datos del formulario
+  const [proveedores, setProveedores] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
-    proveedor: '',
-    origen: '',
-    peso: '',
-    variedad: '',
-    humedad: '',
-    notas: ''
+    proveedor_id: '', fecha_compra: new Date().toISOString().split('T')[0],
+    peso: '', estado: 'Pergamino', variedad: '', proceso: '', humedad: '', notas: ''
   });
 
-  // 2. Función que se ejecuta cuando el usuario escribe
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  useEffect(() => {
+    async function loadProvs() {
+      try {
+        const data = await getProveedores();
+        setProveedores(data);
+      } catch (e) { console.error(e); }
+    }
+    loadProvs();
+  }, []);
 
-  // 3. Función para simular el guardado
-  const handleSubmit = async () => {
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.proveedor_id) return alert("Selecciona un proveedor");
+    
+    setLoading(true);
     try {
-      // Feedback visual simple
-      const btn = document.activeElement;
-      if(btn) btn.innerText = "Guardando...";
-
-      // Llamamos al backend
-      await crearLoteCompra(formData);
-      
-      alert("✅ ¡Lote registrado en la nube exitosamente!");
-      
-      // Limpiamos el formulario
-      setFormData({
-        proveedor: '', origen: '', peso: '', variedad: '', humedad: '', notas: ''
+      await crearLote(formData);
+      alert("✨ Lote registrado correctamente!");
+      setFormData({ // Reset parcial
+        proveedor_id: '', fecha_compra: new Date().toISOString().split('T')[0],
+        peso: '', estado: 'Pergamino', variedad: '', proceso: '', humedad: '', notas: ''
       });
-      
     } catch (error) {
-      alert("❌ Error al guardar: " + error.message);
+      alert("Error: " + error.message);
     } finally {
-      if(btn) btn.innerText = "Guardar Lote"; // Restauramos texto
+      setLoading(false);
     }
   };
+
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Encabezado de la Página */}
-      <div className="mb-8 flex items-center justify-between">
+    <div className="max-w-5xl mx-auto p-6">
+      <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-emerald-900">Recepción de Materia Prima</h1>
-          <p className="text-gray-500">Registra el ingreso de café pergamino al almacén.</p>
-        </div>
-        <div className="p-3 bg-emerald-100 rounded-full text-emerald-600">
-          <Truck size={24} />
-        </div>
-      </div>
-
-      {/* Formulario Principal */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 md:p-8 space-y-6">
-          
-          {/* Sección 1: Datos del Proveedor */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Nombre del Proveedor / Finca</label>
-              <input 
-                type="text"
-                name="proveedor"   // <--- IMPORTANTE: Debe coincidir con el estado
-                value={formData.proveedor} // <--- Conecta con el estado
-                onChange={handleChange}    // <--- Escucha cambios
-                placeholder="Ej: Finca Santa Cruz"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Ubicación / Origen</label>
-              <input 
-                type="text" 
-                name="origen"   // <--- IMPORTANTE: Debe coincidir con el estado
-                value={formData.origen} // <--- Conecta con el estado
-                onChange={handleChange}    // <--- Escucha cambios
-                placeholder="Ej: Caranavi, La Paz"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Sección 2: Datos del Lote */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Peso Ingreso (Kg)</label>
-              <input 
-                type="number" 
-                name="peso"   // <--- IMPORTANTE: Debe coincidir con el estado
-                value={formData.peso} // <--- Conecta con el estado
-                onChange={handleChange}    // <--- Escucha cambios
-                placeholder="0.00"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Variedad</label>
-              <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                <option value="">Seleccionar...</option>
-                <option value="blend">Blend</option>
-                <option value="typica">Typica</option>
-                <option value="caturra">Caturra</option>
-                <option value="geisha">Geisha</option>
-                <option value="catuai">Catuai</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">% Humedad (Opcional)</label>
-              <input 
-                type="number"
-                name="humedad"   // <--- IMPORTANTE: Debe coincidir con el estado
-                value={formData.humedad} // <--- Conecta con el estado
-                onChange={handleChange}    // <--- Escucha cambios
-                placeholder="10-12%"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Sección 3: Notas */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Observaciones de Ingreso</label>
-            <textarea 
-              rows="3"
-              placeholder="Estado de los sacos, olor, color..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-            ></textarea>
-          </div>
-
-        </div>
-
-        {/* Footer del Formulario (Botones) */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-          <button className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleSubmit} className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 shadow-sm hover:shadow transition-all active:scale-95">
-            <Save size={18} />
-            Guardar Lote
-          </button>
+          <h1 className="text-3xl font-bold text-emerald-900 flex items-center gap-3">
+            <Truck className="text-amber-600" /> Recepción de Lotes
+          </h1>
+          <p className="text-stone-500">Ingreso de materia prima al almacén.</p>
         </div>
       </div>
+
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border-t-4 border-emerald-600 overflow-hidden p-8 space-y-8">
+        
+        {/* Selección de Proveedor */}
+        <div>
+          <label className="block text-sm font-bold text-emerald-800 mb-2 uppercase tracking-wider">Proveedor Registrado</label>
+          <select 
+            name="proveedor_id" 
+            value={formData.proveedor_id} 
+            onChange={handleChange} 
+            className="w-full p-3 border border-stone-300 rounded-lg bg-stone-50 focus:ring-2 focus:ring-emerald-500 text-lg"
+            required
+          >
+            <option value="">-- Selecciona un proveedor --</option>
+            {proveedores.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre_completo} - {p.nombre_finca}</option>
+            ))}
+          </select>
+          <p className="text-xs text-stone-400 mt-1">* Si no aparece, regístralo en la sección de Proveedores.</p>
+        </div>
+
+        {/* Detalles del Lote */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-stone-700">Fecha de Compra</label>
+            <input type="date" name="fecha_compra" value={formData.fecha_compra} onChange={handleChange} className="w-full p-3 border rounded-lg" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-stone-700">Peso (Kg)</label>
+            <input type="number" step="0.01" name="peso" value={formData.peso} onChange={handleChange} className="w-full p-3 border rounded-lg font-mono" placeholder="0.00" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-stone-700">Estado Ingreso</label>
+            <select name="estado" value={formData.estado} onChange={handleChange} className="w-full p-3 border rounded-lg bg-white">
+              <option value="Cereza">Cereza</option>
+              <option value="Pergamino">Pergamino</option>
+              <option value="Oro Verde">Oro Verde (Ya trillado)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-stone-700">Variedad</label>
+            <input type="text" name="variedad" value={formData.variedad} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="Ej: Geisha, Caturra" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-stone-700">Proceso</label>
+            <select name="proceso" value={formData.proceso} onChange={handleChange} className="w-full p-3 border rounded-lg bg-white">
+              <option value="">Seleccionar...</option>
+              <option value="Lavado">Lavado</option>
+              <option value="Natural">Natural</option>
+              <option value="Honey">Honey</option>
+              <option value="Anaerobico">Anaeróbico</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-bold text-stone-700">% Humedad</label>
+            <input type="number" step="0.1" name="humedad" value={formData.humedad} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="Ej: 11.5" />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-bold text-stone-700">Notas / Observaciones</label>
+          <textarea name="notas" value={formData.notas} onChange={handleChange} rows="3" className="w-full p-3 border rounded-lg resize-none" placeholder="Detalles visuales, olor, estado de los sacos..."></textarea>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <button type="submit" disabled={loading} className="flex items-center gap-2 bg-emerald-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-lg">
+            {loading ? 'Guardando...' : <><Save size={20}/> Registrar Lote</>}
+          </button>
+        </div>
+
+      </form>
     </div>
   );
 }
