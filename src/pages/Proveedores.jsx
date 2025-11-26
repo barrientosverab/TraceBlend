@@ -87,11 +87,11 @@ export function Proveedores() {
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-stone-700">Departamento</label>
-                <input requiered name="departamento" value={formData.pais} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: La Paz"/>
+                <input required name="departamento" value={formData.departamento} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: La Paz"/>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-stone-700">País</label>
-                <input requiered name="pais" value={formData.pais} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Bolivia"/>
+                <input required name="pais" value={formData.pais} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Bolivia"/>
               </div>
             </div>
           </div>
