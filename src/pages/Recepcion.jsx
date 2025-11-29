@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Truck, Coffee } from 'lucide-react';
+import { Save, Truck } from 'lucide-react'; // Coffee no se usaba, lo quité para limpiar
 import { crearLote } from '../services/lotesService';
 import { getProveedores } from '../services/proveedoresService';
 
@@ -8,8 +8,15 @@ export function Recepcion() {
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
-    proveedor_id: '', fecha_compra: new Date().toISOString().split('T')[0],
-    peso: '', estado: 'Pergamino', variedad: '', proceso: '', humedad: '', notas: ''
+    finca_id: '', 
+    fecha_compra: new Date().toISOString().split('T')[0],
+    peso: '', 
+    estado: 'pergamino_seco', // <--- CORRECCIÓN: Valor por defecto coincide con BD (minúscula)
+    variedad: '', 
+    proceso: '', 
+    humedad: '', 
+    precio_total: '',
+    notas: ''
   });
 
   useEffect(() => {
@@ -26,15 +33,23 @@ export function Recepcion() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.proveedor_id) return alert("Selecciona un proveedor");
+    if (!formData.finca_id) return alert("Selecciona un proveedor");
     
     setLoading(true);
     try {
       await crearLote(formData);
       alert("✨ Lote registrado correctamente!");
-      setFormData({ // Reset parcial
-        proveedor_id: '', fecha_compra: new Date().toISOString().split('T')[0],
-        peso: '', estado: 'Pergamino', variedad: '', proceso: '', humedad: '', notas: ''
+      
+      // <--- CORRECCIÓN: Resetear el formulario correctamente
+      setFormData({ 
+        finca_id: '', // Antes decía proveedor_id (error)
+        fecha_compra: new Date().toISOString().split('T')[0],
+        peso: '', 
+        estado: 'pergamino_seco', // Vuelta al valor default válido
+        variedad: '', 
+        proceso: '', 
+        humedad: '', 
+        notas: ''
       });
     } catch (error) {
       alert("Error: " + error.message);
@@ -56,19 +71,24 @@ export function Recepcion() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border-t-4 border-emerald-600 overflow-hidden p-8 space-y-8">
         
-        {/* Selección de Proveedor */}
+        {/* Selección de Proveedor/Finca */}
         <div>
-          <label className="block text-sm font-bold text-emerald-800 mb-2 uppercase tracking-wider">Proveedor Registrado</label>
+          <label className="block text-sm font-bold text-emerald-800 mb-2 uppercase tracking-wider">
+            Origen (Proveedor - Finca)
+          </label>
           <select 
-            name="proveedor_id" 
-            value={formData.proveedor_id} 
+            name="finca_id" 
+            value={formData.finca_id} 
             onChange={handleChange} 
             className="w-full p-3 border border-stone-300 rounded-lg bg-stone-50 focus:ring-2 focus:ring-emerald-500 text-lg"
             required
           >
-            <option value="">-- Selecciona un proveedor --</option>
-            {proveedores.map(p => (
-              <option key={p.id} value={p.id}>{p.nombre_completo} - {p.nombre_finca}</option>
+            <option value="">-- Selecciona un origen --</option>
+            {proveedores.map((p, index) => (
+              // Usamos index como key fallback por si hay IDs repetidos en la vista plana
+              <option key={`${p.finca_id}-${index}`} value={p.finca_id}>
+                {p.nombre_mostrar || `${p.nombre_completo} - ${p.nombre_finca}`} 
+              </option>
             ))}
           </select>
           <p className="text-xs text-stone-400 mt-1">* Si no aparece, regístralo en la sección de Proveedores.</p>
@@ -84,12 +104,28 @@ export function Recepcion() {
             <label className="text-sm font-bold text-stone-700">Peso (Kg)</label>
             <input type="number" step="0.01" name="peso" value={formData.peso} onChange={handleChange} className="w-full p-3 border rounded-lg font-mono" placeholder="0.00" required />
           </div>
+
+          <div className="space-y-1">
+  <label className="text-sm font-bold text-stone-700">Costo Total (Bs)</label>
+  <input 
+    type="number" 
+    step="0.01" 
+    name="precio_total" 
+    value={formData.precio_total} 
+    onChange={handleChange} 
+    className="w-full p-3 border rounded-lg font-mono text-emerald-800 font-bold" 
+    placeholder="0.00" 
+  />
+</div>
+          
+          {/* CORRECCIÓN: Selector de Estado con valores de Base de Datos */}
           <div className="space-y-1">
             <label className="text-sm font-bold text-stone-700">Estado Ingreso</label>
-            <select name="estado" value={formData.estado} onChange={handleChange} className="w-full p-3 border rounded-lg bg-white">
-              <option value="Cereza">Cereza</option>
-              <option value="Pergamino">Pergamino</option>
-              <option value="Oro Verde">Oro Verde (Ya trillado)</option>
+            <select name="estado" value={formData.estado} onChange={handleChange} className="w-full p-3 border rounded-lg bg-amber-50 font-medium">
+              <option value="cereza">🍒 Cereza (Fruta)</option>
+              <option value="pergamino_humedo">💧 Pergamino Húmedo</option>
+              <option value="pergamino_seco">📜 Pergamino Seco</option>
+              <option value="oro_verde">💎 Oro Verde (Ya trillado)</option>
             </select>
           </div>
         </div>

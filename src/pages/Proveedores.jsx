@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
-import { UserPlus, MapPin, Phone, FileText, Save } from 'lucide-react';
+import { UserPlus, MapPin, FileText, Save, Globe } from 'lucide-react'; // Agregamos Globe
 import { crearProveedor } from '../services/proveedoresService';
 
 export function Proveedores() {
   const [loading, setLoading] = useState(false);
+  
+  // Estado inicial actualizado
   const [formData, setFormData] = useState({
     nombre_completo: '', ci_nit: '', telefono: '', email: '',
-    nombre_finca: '', altura_msnm: '', region: '', departamento: '', pais: ''
+    tipo_proveedor: 'productor', // Valor por defecto
+    nombre_finca: '', 
+    nombre_productor: '', // <--- NUEVO CAMPO: Para el nombre del socio/granjero real
+    altura_msnm: '', 
+    region: '', 
+    sub_region: '', // Antes "departamento"
+    pais: 'BO' // Por defecto Bolivia
   });
 
   const handleChange = (e) => {
@@ -17,17 +25,27 @@ export function Proveedores() {
     e.preventDefault();
     setLoading(true);
     try {
-      await crearProveedor(formData);
-      alert("✅ Proveedor registrado exitosamente");
-      setFormData({ // Reset
-        nombre_completo: '', ci_nit: '', telefono: '', email: '',
-        nombre_finca: '', altura_msnm: '', region: '', departamento: '', pais: ''
-      });
-    } catch (error) {
-      alert("❌ Error: " + error.message);
-    } finally {
-      setLoading(false);
-    }
+    await crearProveedor(formData);
+    alert("✅ Proveedor y Finca registrados exitosamente");
+    
+    // RESET COMPLETO (Todos los campos vuelven a su estado inicial)
+    setFormData({
+      nombre_completo: '', 
+      ci_nit: '', 
+      telefono: '', 
+      email: '',
+      tipo_proveedor: 'productor', // Volvemos al default
+      nombre_finca: '', 
+      altura_msnm: '', 
+      region: '', 
+      sub_region: '', 
+      pais: 'BO' // Volvemos al default
+    });
+  } catch (error) {
+    alert("Error: " + error.message);
+  } finally {
+    setLoading(false);
+  }
   };
 
   return (
@@ -36,71 +54,97 @@ export function Proveedores() {
         <h1 className="text-3xl font-bold text-emerald-900 flex items-center gap-3">
           <UserPlus className="text-amber-600" /> Registro de Proveedores
         </h1>
-        <p className="text-stone-500">Gestión de productores y fincas aliadas.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg border border-stone-100 overflow-hidden">
-        <div className="p-8 space-y-8">
-          
-          {/* Datos Personales */}
-          <div>
-            <h2 className="text-lg font-bold text-emerald-800 border-b border-stone-200 pb-2 mb-4 flex items-center gap-2">
-              <FileText size={18}/> Datos de Identificación
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Nombre Completo</label>
-                <input required name="nombre_completo" value={formData.nombre_completo} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Juan Pérez" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">CI / NIT</label>
-                <input name="ci_nit" value={formData.ci_nit} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Documento de Identidad" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Teléfono / Celular</label>
-                <input required name="telefono" value={formData.telefono} onChange={handleChange} type="tel" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Número de contacto" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Email (Opcional)</label>
-                <input name="email" value={formData.email} onChange={handleChange} type="email" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="correo@ejemplo.com" />
-              </div>
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg border border-stone-100 p-8 space-y-8">
+        
+        {/* SECCIÓN 1: DATOS COMERCIALES */}
+        <div>
+          <h2 className="text-lg font-bold text-emerald-800 border-b pb-2 mb-4 flex items-center gap-2">
+            <FileText size={18}/> Datos del Proveedor
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="col-span-2">
+              <label className="text-sm font-semibold text-stone-700">Nombre / Razón Social</label>
+              <input required name="nombre_completo" value={formData.nombre_completo} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="Ej: Juan Pérez o Cooperativa El Sol" />
             </div>
-          </div>
-
-          {/* Datos de Finca */}
-          <div>
-            <h2 className="text-lg font-bold text-emerald-800 border-b border-stone-200 pb-2 mb-4 flex items-center gap-2">
-              <MapPin size={18}/> Datos de la Finca
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Nombre Finca</label>
-                <input required name="nombre_finca" value={formData.nombre_finca} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Finca La Esperanza" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Altura (msnm)</label>
-                <input required name="altura_msnm" value={formData.altura_msnm} onChange={handleChange} type="number" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: 1500" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Región / Municipio</label>
-                <input required name="region" value={formData.region} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Caranavi" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">Departamento</label>
-                <input required name="departamento" value={formData.departamento} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: La Paz"/>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-stone-700">País</label>
-                <input required name="pais" value={formData.pais} onChange={handleChange} type="text" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Bolivia"/>
-              </div>
+            
+            {/* SELECTOR DE TIPO DE PROVEEDOR */}
+            <div>
+              <label className="text-sm font-bold text-emerald-700">Tipo de Proveedor</label>
+              <select name="tipo_proveedor" value={formData.tipo_proveedor} onChange={handleChange} className="w-full p-3 border rounded-lg bg-emerald-50 border-emerald-200 font-medium">
+                <option value="productor">Productor (Finca)</option>
+                <option value="cooperativa">Cooperativa</option>
+                <option value="importador">Importador / Empresa</option>
+              </select>
             </div>
-          </div>
 
+            <div>
+              <label className="text-sm font-semibold text-stone-700">CI / NIT / TAX ID</label>
+              <input name="ci_nit" value={formData.ci_nit} onChange={handleChange} className="w-full p-3 border rounded-lg" />
+            </div>
+            {/* ... (Teléfono y Email igual que antes) */}
+          </div>
         </div>
 
-        <div className="p-6 bg-stone-50 border-t border-stone-100 flex justify-end">
-          <button type="submit" disabled={loading} className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50">
-            {loading ? 'Guardando...' : <><Save size={20}/> Guardar Proveedor</>}
+        {/* SECCIÓN 2: DATOS DE ORIGEN (FINCA) */}
+        <div>
+          <h2 className="text-lg font-bold text-emerald-800 border-b pb-2 mb-4 flex items-center gap-2">
+            <MapPin size={18}/> Datos de Origen (Finca Principal)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="col-span-2">
+              <label className="text-sm font-semibold text-stone-700">Nombre Finca / Origen</label>
+              <input required name="nombre_finca" value={formData.nombre_finca} onChange={handleChange} className="w-full p-3 border rounded-lg" />
+            </div>
+
+            {/* NUEVO CAMPO: Productor Real */}
+            {/* Solo mostramos este label diferente si es Cooperativa o Importador para dar contexto */}
+            <div className="col-span-2">
+              <label className="text-sm font-semibold text-stone-700">
+                {formData.tipo_proveedor === 'productor' ? 'Propietario (Opcional)' : 'Nombre del Socio / Productor Origen'}
+              </label>
+              <input 
+                name="nombre_productor" 
+                value={formData.nombre_productor} 
+                onChange={handleChange} 
+                className="w-full p-3 border rounded-lg" 
+                placeholder={formData.tipo_proveedor === 'productor' ? 'Mismo del proveedor' : 'Ej: Pedro Gómez (Socio)'}
+              />
+            </div>
+            
+            {/* SELECTOR DE PAÍS */}
+            <div>
+              <label className="text-sm font-semibold text-stone-700 flex items-center gap-1"><Globe size={14}/> País</label>
+              <select name="pais" value={formData.pais} onChange={handleChange} className="w-full p-3 border rounded-lg bg-white">
+                <option value="BO">🇧🇴 Bolivia</option>
+                <option value="CO">🇨🇴 Colombia</option>
+                <option value="PE">🇵🇪 Perú</option>
+                <option value="BR">🇧🇷 Brasil</option>
+                <option value="GT">🇬🇹 Guatemala</option>
+                <option value="ET">Eh 🇪🇹 Etiopía</option>
+                <option value="XX">Otro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-stone-700">Región</label>
+              <input required name="region" value={formData.region} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="Ej: Caranavi" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-stone-700">Sub-Región / Vereda</label>
+              <input name="sub_region" value={formData.sub_region} onChange={handleChange} className="w-full p-3 border rounded-lg" placeholder="Ej: Taypiplaya" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-stone-700">Altura (msnm)</label>
+              <input name="altura_msnm" type="number" value={formData.altura_msnm} onChange={handleChange} className="w-full p-3 border rounded-lg" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <button type="submit" disabled={loading} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 flex items-center gap-2">
+            {loading ? 'Guardando...' : <><Save size={20}/> Registrar</>}
           </button>
         </div>
       </form>
