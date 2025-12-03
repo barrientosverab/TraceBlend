@@ -8,6 +8,7 @@ import { Layout } from './components/layout/Layout';
 
 // Páginas
 import { Dashboard } from './pages/Dashboard';
+import { Usuarios } from './pages/Usuarios';
 import { Recepcion } from './pages/Recepcion';
 import { Proveedores } from './pages/Proveedores';
 import { Laboratorio } from './pages/Laboratorio';
@@ -67,7 +68,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route index element={<Dashboard />} />
+          <Route path="usuarios" element={<Usuarios/>}/>
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="recepcion" element={<Recepcion />} />
           <Route path="laboratorio" element={<Laboratorio />} />

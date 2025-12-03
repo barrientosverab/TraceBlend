@@ -51,22 +51,38 @@ export const getDashboardStats = async () => {
 export const getActividadReciente = async () => {
   const orgId = await getCurrentOrgId();
 
-  // Traemos los últimos 5 movimientos de empaque como "actividad de ejemplo"
-  // (En un sistema real haríamos una union de varias tablas, pero esto basta por ahora)
-  const { data } = await supabase
-    .from('packaging_logs')
-    .select(`
-      packaging_date, 
-      units_created,
-      products ( name )
-    `)
-    .eq('organization_id', orgId)
-    .order('packaging_date', { ascending: false })
-    .limit(5);
+  // ESTRATEGIA REAL: Consultamos las 3 tablas principales en paralelo y las mezclamos en JS
+  // (Hacer UNION en Supabase JS es complejo, esta es la forma eficiente en cliente)
+  
+  const [empaques, tuestes, ventas] = await Promise.all([
+    supabase.from('packaging_logs').select('created_at, units_created, products(name)').eq('organization_id', orgId).limit(5).order('created_at', {ascending:false}),
+    supabase.from('roast_batches').select('created_at, roasted_weight_output, machine_id').eq('organization_id', orgId).limit(5).order('created_at', {ascending:false}),
+    supabase.from('sales_orders').select('order_date, total_amount, clients(business_name)').eq('organization_id', orgId).limit(5).order('order_date', {ascending:false})
+  ]);
 
-  return data?.map(d => ({
-    fecha: d.packaging_date,
-    descripcion: `Empacadas ${d.units_created} uds de ${d.products?.name}`,
-    tipo: 'produccion'
-  })) || [];
+  // Normalizamos los datos
+  const listaEmpaques = (empaques.data || []).map(x => ({
+    fecha: new Date(x.created_at),
+    tipo: 'empaque',
+    texto: `Empacadas ${x.units_created} uds de ${x.products?.name}`
+  }));
+
+  const listaTuestes = (tuestes.data || []).map(x => ({
+    fecha: new Date(x.created_at),
+    tipo: 'tueste',
+    texto: `Tostado de ${x.roasted_weight_output}kg finalizado`
+  }));
+
+  const listaVentas = (ventas.data || []).map(x => ({
+    fecha: new Date(x.order_date),
+    tipo: 'venta',
+    texto: `Venta por Bs ${x.total_amount} a ${x.clients?.business_name || 'Cliente Final'}`
+  }));
+
+  // Unir, Ordenar por fecha descendente y tomar los últimos 10
+  const mix = [...listaEmpaques, ...listaTuestes, ...listaVentas]
+    .sort((a, b) => b.fecha - a.fecha)
+    .slice(0, 10);
+
+  return mix;
 };

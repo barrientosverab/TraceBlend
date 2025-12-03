@@ -100,3 +100,28 @@ export const guardarTueste = async (datosTueste, consumoVerde) => {
 
   return batch;
 };
+// GET: Historial de Tuestes Realizados
+export const getHistorialTuestes = async () => {
+  const orgId = await getCurrentOrgId();
+  
+  const { data, error } = await supabase
+    .from('roast_batches')
+    .select(`
+      id, 
+      roast_date, 
+      total_time_seconds,
+      drop_temp,
+      roasted_weight_output,
+      roast_log_data,
+      machines ( name ),
+      roast_batch_inputs (
+        green_coffee_warehouse ( name_ref )
+      )
+    `)
+    .eq('organization_id', orgId)
+    .order('roast_date', { ascending: false })
+    .limit(20); // Traemos los últimos 20
+
+  if (error) throw error;
+  return data;
+};
