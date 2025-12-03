@@ -10,6 +10,7 @@ import {
   Users,
   UserPlus,
   Settings,
+  ShoppingBag,
   LogOut // Nuevo ícono para salir
 } from 'lucide-react';
 
@@ -23,8 +24,9 @@ export function Sidebar() {
     { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio' },
     { path: '/trilla', icon: Settings, label: 'Trilla y Clasificación' },
     { path: '/tueste', icon: Flame, label: 'Producción Tueste' },
-    { path: '/inventario', icon: Package, label: 'Bodega Oro Verde' },
+    { path: '/empaque', icon: Package, label: 'Empaque y Productos' },
     { path: '/clientes', icon: Users, label: 'Gestión Clientes' },
+    { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta' }
   ];
 
   // Función para cerrar sesión

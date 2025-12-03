@@ -7,14 +7,16 @@ import { Login } from './pages/Login';
 import { Layout } from './components/layout/Layout';
 
 // Páginas
+import { Dashboard } from './pages/Dashboard';
 import { Recepcion } from './pages/Recepcion';
 import { Proveedores } from './pages/Proveedores';
 import { Laboratorio } from './pages/Laboratorio';
-import { Trilla } from './pages/Trilla'; // Asegúrate de tener este archivo creado
+import { Trilla } from './pages/Trilla';
+import { Tueste }from './pages/Tueste';
+import { Empaque } from './pages/Empaque';
+import { Ventas } from './pages/Ventas';
 import { RecuperarPassword } from './pages/RecuperarPassword';
 import { RestablecerPassword } from './pages/RestablecerPassword';
-
-const Dashboard = () => <h1 className="text-3xl font-bold text-emerald-900">Bienvenido al Panel Principal</h1>;
 
 function App() {
   const [session, setSession] = useState(null);
@@ -65,10 +67,14 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route index element={<Dashboard />} />
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="recepcion" element={<Recepcion />} />
           <Route path="laboratorio" element={<Laboratorio />} />
           <Route path="trilla" element={<Trilla />} />
+          <Route path="tueste" element={<Tueste/>} />
+          <Route path="empaque" element={<Empaque />} />
+          <Route path="ventas" element={<Ventas />} />
           <Route path="*" element={<div className="text-red-500">Página no encontrada</div>} />
         </Route>
         {/* Ruta Especial: Restablecer Password (requiere sesión pero no layout completo) */}
