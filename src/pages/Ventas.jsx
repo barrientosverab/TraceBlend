@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Users, Plus, Trash2, CheckCircle, Search, DollarSign } from 'lucide-react';
+import {useAuth} from '../hooks/useAuth';
 import { getClientes, crearCliente, getCatalogoVentas, registrarVenta } from '../services/ventasService';
 
 export function Ventas() {
+  const {orgId, user} = useAuth();
   const [activeTab, setActiveTab] = useState('pos'); // 'pos' | 'clients'
   
   // Data
@@ -19,7 +21,9 @@ export function Ventas() {
   
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { cargarTodo(); }, []);
+  useEffect(() => {
+    if(orgId) cargarTodo(); 
+  }, [orgId]);
 
   const cargarTodo = async () => {
     try {
@@ -58,7 +62,7 @@ export function Ventas() {
         cliente_id: clienteSeleccionado,
         carrito: carrito,
         total: totalVenta
-      });
+      }, orgId, user.id);
       alert("✅ Venta registrada exitosamente!");
       setCarrito([]);
       setClienteSeleccionado('');
@@ -71,7 +75,7 @@ export function Ventas() {
   const handleCrearCliente = async () => {
     if (!newClient.razon_social) return;
     try {
-      await crearCliente(newClient);
+      await crearCliente(newClient, orgId);
       alert("Cliente creado");
       setNewClient({ razon_social: '', nit: '', telefono: '' });
       cargarTodo();

@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId } from './authService';
 
 // GET: Listar máquinas activas
 export const getMaquinas = async () => {
@@ -14,8 +13,7 @@ export const getMaquinas = async () => {
 };
 
 // POST: Registrar nueva máquina
-export const crearMaquina = async (datos) => {
-  const orgId = await getCurrentOrgId();
+export const crearMaquina = async (datos, orgId) => {
 
   const { data, error } = await supabase
     .from('machines')

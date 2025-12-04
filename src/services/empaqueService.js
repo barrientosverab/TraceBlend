@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId, getCurrentUserId } from './authService';
 
 // --- GESTIÓN DE PRODUCTOS (SKUs) ---
 
@@ -22,8 +21,7 @@ export const getLotesVerdesParaVenta = async () => {
   if (error) throw error;
   return data;
 };
-export const crearProducto = async (producto) => {
-  const orgId = await getCurrentOrgId();
+export const crearProducto = async (producto, orgId) => {
   
   const { data, error } = await supabase
     .from('products')
@@ -115,9 +113,7 @@ export const getBatchesDisponibles = async () => {
   }).filter(b => b.peso_disponible > 0.1); 
 };
 
-export const registrarEmpaque = async (datos) => {
-  const orgId = await getCurrentOrgId();
-  const userId = await getCurrentUserId();
+export const registrarEmpaque = async (datos, orgId, userId) => {
 
   const { error } = await supabase
     .from('packaging_logs')

@@ -1,14 +1,10 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId } from './authService';
 
-export const crearLote = async (datos) => {
-  const orgId = await getCurrentOrgId();
-  
+export const crearLote = async (datos, orgId) => {  
   // Generamos referencia
   const code = `LOT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
   // Mapeo Frontend (Español) -> Backend ENUM (Inglés)
-  // Revisa que los values del <select> en Recepcion.jsx coincidan con las claves aquí
   const estadoMap = {
     'Cereza': 'cereza',
     'Pergamino': 'pergamino_seco',
@@ -17,13 +13,11 @@ export const crearLote = async (datos) => {
 
   const loteData = {
     organization_id: orgId,
-    farm_id: datos.finca_id, // <--- IMPORTANTE: Usamos ID de Finca, no de Proveedor
+    farm_id: datos.finca_id, 
     code_ref: code,
-    
     purchase_date: datos.fecha_compra,
     initial_quantity: parseFloat(datos.peso),
-    current_quantity: parseFloat(datos.peso), // Al inicio son iguales
-
+    current_quantity: parseFloat(datos.peso), 
     // MAPEO DE PRECIO (Costos)
     total_cost_local: parseFloat(datos.precio_total) || 0,
     
@@ -31,9 +25,7 @@ export const crearLote = async (datos) => {
     variety: datos.variedad,
     process: datos.proceso,
     humidity_percentage: datos.humedad ? parseFloat(datos.humedad) : null,
-    // MAPEO DE NOTAS (Ahora sí funcionará tras el SQL)
-    observations: datos.notas, // <--- CAMBIAMOS 'notas' POR 'observations'
-    
+    observations: datos.notas, 
     unit_of_measure: 'Kg'
   };
 

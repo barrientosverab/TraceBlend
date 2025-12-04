@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId } from './authService';
 
 // GET: Lotes Disponibles (Sin cambios)
 export const getLotesParaAnalisis = async () => {
@@ -31,8 +30,7 @@ export const getLotesParaAnalisis = async () => {
 };
 
 // POST: Guardar Análisis y Descontar Muestra
-export const guardarAnalisis = async (loteId, datos) => {
-  const orgId = await getCurrentOrgId();
+export const guardarAnalisis = async (loteId, datos, orgId) => {
   
   // 1. DESCONTAR LA MUESTRA DEL INVENTARIO FÍSICO
   // Convertimos gramos a Kilos (ej: 300g = 0.3kg)

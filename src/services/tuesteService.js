@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId, getCurrentUserId } from './authService';
 
 // GET: Inventario de Oro Verde CON DETALLES TÉCNICOS
 export const getInventarioOro = async () => {
@@ -52,9 +51,7 @@ export const getInventarioOro = async () => {
 };
 
 // POST: Guardar Batch (Actualizado con nuevos campos)
-export const guardarTueste = async (datosTueste, consumoVerde) => {
-  const orgId = await getCurrentOrgId();
-  const userId = await getCurrentUserId();
+export const guardarTueste = async (datosTueste, consumoVerde, orgId, userId) => {
 
   // 1. Crear el Batch
   const { data: batch, error: errBatch } = await supabase
@@ -101,8 +98,7 @@ export const guardarTueste = async (datosTueste, consumoVerde) => {
   return batch;
 };
 // GET: Historial de Tuestes Realizados
-export const getHistorialTuestes = async () => {
-  const orgId = await getCurrentOrgId();
+export const getHistorialTuestes = async (orgId) => {
   
   const { data, error } = await supabase
     .from('roast_batches')

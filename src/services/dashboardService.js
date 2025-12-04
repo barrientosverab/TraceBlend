@@ -1,13 +1,16 @@
+// src/services/dashboardService.js
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId } from './authService';
 
-export const getDashboardStats = async () => {
-  const orgId = await getCurrentOrgId();
+// NOTA: Eliminamos la importación de 'authService' para evitar bloqueos.
+// Ahora recibimos 'orgId' como argumento desde el componente.
+
+export const getDashboardStats = async (orgId) => {
+  if (!orgId) throw new Error("OrgID requerido para dashboard");
   
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
-  // 1. Total Ventas del Mes (Dinero)
+  // 1. Total Ventas del Mes
   const { data: ventas } = await supabase
     .from('sales_orders')
     .select('total_amount')
@@ -16,7 +19,7 @@ export const getDashboardStats = async () => {
   
   const totalVentasMes = ventas?.reduce((sum, v) => sum + v.total_amount, 0) || 0;
 
-  // 2. Inventario de Oro Verde (Materia Prima)
+  // 2. Inventario de Oro Verde
   const { data: verde } = await supabase
     .from('green_coffee_warehouse')
     .select('quantity_kg')
@@ -25,7 +28,7 @@ export const getDashboardStats = async () => {
   
   const stockVerdeKg = verde?.reduce((sum, v) => sum + v.quantity_kg, 0) || 0;
 
-  // 3. Inventario de Producto Terminado (Bolsas)
+  // 3. Inventario de Producto Terminado
   const { data: producto } = await supabase
     .from('finished_inventory')
     .select('current_stock')
@@ -33,7 +36,7 @@ export const getDashboardStats = async () => {
   
   const stockProductoUnidades = producto?.reduce((sum, p) => sum + p.current_stock, 0) || 0;
 
-  // 4. Lotes en Proceso (Sin Trillar)
+  // 4. Lotes en Proceso
   const { count: lotesPendientes } = await supabase
     .from('raw_inventory_batches')
     .select('*', { count: 'exact', head: true })
@@ -48,19 +51,16 @@ export const getDashboardStats = async () => {
   };
 };
 
-export const getActividadReciente = async () => {
-  const orgId = await getCurrentOrgId();
+export const getActividadReciente = async (orgId) => {
+  if (!orgId) throw new Error("OrgID requerido para actividad");
 
-  // ESTRATEGIA REAL: Consultamos las 3 tablas principales en paralelo y las mezclamos en JS
-  // (Hacer UNION en Supabase JS es complejo, esta es la forma eficiente en cliente)
-  
+  // Consultamos las 3 tablas usando el ID inyectado
   const [empaques, tuestes, ventas] = await Promise.all([
     supabase.from('packaging_logs').select('created_at, units_created, products(name)').eq('organization_id', orgId).limit(5).order('created_at', {ascending:false}),
     supabase.from('roast_batches').select('created_at, roasted_weight_output, machine_id').eq('organization_id', orgId).limit(5).order('created_at', {ascending:false}),
     supabase.from('sales_orders').select('order_date, total_amount, clients(business_name)').eq('organization_id', orgId).limit(5).order('order_date', {ascending:false})
   ]);
 
-  // Normalizamos los datos
   const listaEmpaques = (empaques.data || []).map(x => ({
     fecha: new Date(x.created_at),
     tipo: 'empaque',
@@ -79,7 +79,6 @@ export const getActividadReciente = async () => {
     texto: `Venta por Bs ${x.total_amount} a ${x.clients?.business_name || 'Cliente Final'}`
   }));
 
-  // Unir, Ordenar por fecha descendente y tomar los últimos 10
   const mix = [...listaEmpaques, ...listaTuestes, ...listaVentas]
     .sort((a, b) => b.fecha - a.fecha)
     .slice(0, 10);

@@ -1,27 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { supabase } from '../../services/supabaseClient';
-import { getUserProfile } from '../../services/authService'; // <--- Importamos el servicio
+import { useAuth } from '../../hooks/useAuth'; // <--- IMPORTACIÓN CORRECTA
 import { 
-  LayoutDashboard, Truck, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut, Loader 
+  LayoutDashboard, Truck, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut 
 } from 'lucide-react';
+import { supabase } from '../../services/supabaseClient';
 
 export function Sidebar() {
   const location = useLocation();
-  const [role, setRole] = useState(null); // Estado para el rol
-  const [loading, setLoading] = useState(true);
+  const { role, signOut } = useAuth(); // <--- USAMOS EL HOOK, NO EL SERVICIO
 
-  // Al cargar, preguntamos quién es el usuario
-  useEffect(() => {
-    async function loadRole() {
-      const profile = await getUserProfile();
-      if (profile) setRole(profile.role);
-      setLoading(false);
-    }
-    loadRole();
-  }, []);
-
-  // DEFINICIÓN DE PERMISOS: ¿Quién puede ver qué?
   const allMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['administrador', 'operador', 'tostador', 'vendedor'] },
     { path: '/usuarios', icon: Users, label: 'Usuarios', roles: ['administrador'] },
@@ -34,16 +22,15 @@ export function Sidebar() {
     { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['administrador', 'vendedor'] }
   ];
 
-  // Filtramos según el rol actual
   const allowedItems = allMenuItems.filter(item => 
     role === 'administrador' || (role && item.roles.includes(role))
   );
 
   const handleLogout = async () => {
-    if (confirm("¿Salir del sistema?")) await supabase.auth.signOut();
+    if (confirm("¿Salir del sistema?")) {
+        await signOut();
+    }
   };
-
-  if (loading) return <div className="w-64 h-screen bg-emerald-900 flex items-center justify-center"><Loader className="text-white animate-spin"/></div>;
 
   return (
     <aside className="w-64 h-screen bg-emerald-900 text-white flex flex-col shadow-xl transition-all">
@@ -53,7 +40,9 @@ export function Sidebar() {
         </div>
         <div>
           <h1 className="text-lg font-bold tracking-wide">Trace Blend</h1>
-          <span className="text-xs text-emerald-300 uppercase tracking-wider border border-emerald-700 px-1 rounded">{role || 'Usuario'}</span>
+          <span className="text-xs text-emerald-300 uppercase tracking-wider border border-emerald-700 px-1 rounded">
+            {role || 'Usuario'}
+          </span>
         </div>
       </div>
 

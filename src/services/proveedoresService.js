@@ -1,9 +1,6 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId } from './authService';
 
-export const crearProveedor = async (formData) => {
-  const orgId = await getCurrentOrgId();
-
+export const crearProveedor = async (formData, orgId) => {
   // 1. Insertar Proveedor (suppliers)
   const { data: supplier, error: errSup } = await supabase
     .from('suppliers')

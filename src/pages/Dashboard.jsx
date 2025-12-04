@@ -2,30 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, Package, Coffee, AlertCircle, Calendar, DollarSign, Activity 
 } from 'lucide-react';
+// 1. IMPORTAMOS EL HOOK DE AUTH
+import { useAuth } from '../hooks/useAuth';
 import { getDashboardStats, getActividadReciente } from '../services/dashboardService';
 
 export function Dashboard() {
+  // 2. OBTENEMOS EL ID DE LA ORGANIZACIÓN DEL CONTEXTO (INSTANTÁNEO)
+  const { orgId } = useAuth();
+  
   const [stats, setStats] = useState({ ventas_mes: 0, stock_verde: 0, stock_producto: 0, lotes_pendientes: 0 });
   const [actividad, setActividad] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
+      // Si no hay orgId (raro, pero posible), no hacemos nada aún
+      if (!orgId) return;
+
       try {
-        const [s, a] = await Promise.all([getDashboardStats(), getActividadReciente()]);
+        // 3. PASAMOS EL ORGID COMO ARGUMENTO
+        const [s, a] = await Promise.all([
+          getDashboardStats(orgId), 
+          getActividadReciente(orgId)
+        ]);
         setStats(s);
         setActividad(a);
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
+      } catch (e) { 
+        console.error("Error cargando dashboard:", e); 
+      } finally { 
+        setLoading(false); 
+      }
     }
     load();
-  }, []);
+  }, [orgId]); // Ejecutar cuando tengamos el orgId
 
-  if (loading) return <div className="p-8 text-stone-400">Cargando indicadores...</div>;
+  if (loading) return <div className="p-8 text-stone-400 animate-pulse">Cargando indicadores...</div>;
 
   return (
+    // ... (El resto del JSX (return) se mantiene exactamente igual)
     <div className="max-w-6xl mx-auto">
-      
+      {/* ...contenido existente... */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-stone-800">Panel de Control</h1>
         <p className="text-stone-500">Resumen operativo de hoy, {new Date().toLocaleDateString()}</p>
@@ -115,7 +131,7 @@ export function Dashboard() {
                 <div key={i} className="flex gap-3 items-start border-b border-stone-50 pb-3 last:border-0">
                   <div className="w-2 h-2 mt-2 rounded-full bg-emerald-500 shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-stone-700">{item.descripcion}</p>
+                    <p className="text-sm font-medium text-stone-700">{item.descripcion || item.texto}</p>
                     <p className="text-xs text-stone-400">{new Date(item.fecha).toLocaleDateString()}</p>
                   </div>
                 </div>

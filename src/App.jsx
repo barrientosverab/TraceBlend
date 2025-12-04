@@ -1,72 +1,54 @@
-import { useState, useEffect } from 'react';
+// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './services/supabaseClient';
-
-// Componentes
-import { Login } from './pages/Login';
+import { useAuth } from './hooks/useAuth'; // <--- Importante: Usar el hook
 import { Layout } from './components/layout/Layout';
 
 // Páginas
+import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Usuarios } from './pages/Usuarios';
 import { Recepcion } from './pages/Recepcion';
 import { Proveedores } from './pages/Proveedores';
 import { Laboratorio } from './pages/Laboratorio';
 import { Trilla } from './pages/Trilla';
-import { Tueste }from './pages/Tueste';
+import { Tueste } from './pages/Tueste';
 import { Empaque } from './pages/Empaque';
 import { Ventas } from './pages/Ventas';
 import { RecuperarPassword } from './pages/RecuperarPassword';
 import { RestablecerPassword } from './pages/RestablecerPassword';
 
 function App() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // 1. Verificar sesión actual al cargar
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // 2. Escuchar cambios (login/logout)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // ELIMINA CUALQUIER const [loading, setLoading] = useState(...) AQUÍ
+  const { isAuthenticated, loading } = useAuth(); // <--- Usamos SOLO esto
 
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-stone-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-700"></div>
+        <p className="ml-3 text-emerald-800 font-medium">Iniciando sistema...</p>
       </div>
     );
   }
 
-  // Si no hay sesión, manejamos Login Y Recuperación
-  if (!session) {
+  // Rutas Públicas
+  if (!isAuthenticated) {
     return (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/recuperar" element={<RecuperarPassword />} />
-          {/* Cualquier otra cosa va a Login */}
+          <Route path="/restablecer-password" element={<RestablecerPassword />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     );
   }
 
-  // Si hay sesión, mostramos la App completa
+  // Rutas Privadas
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
+          <Route path="/" element={<Layout />} />
           <Route index element={<Dashboard />} />
           <Route path="usuarios" element={<Usuarios/>}/>
           <Route path="proveedores" element={<Proveedores />} />
@@ -76,14 +58,10 @@ function App() {
           <Route path="tueste" element={<Tueste/>} />
           <Route path="empaque" element={<Empaque />} />
           <Route path="ventas" element={<Ventas />} />
-          <Route path="*" element={<div className="text-red-500">Página no encontrada</div>} />
-        </Route>
-        {/* Ruta Especial: Restablecer Password (requiere sesión pero no layout completo) */}
-        <Route path="/restablecer-password" element={<RestablecerPassword />} />
-        <Route path="*" element={<div className="text-red-500">Página no encontrada</div>} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
 export default App;

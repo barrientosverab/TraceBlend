@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { getCurrentOrgId } from './authService'; // Asegúrate de tener este helper creado
 
 // 1. GET: Obtener lotes disponibles para trillar (Materia Prima con saldo > 0)
 export const getLotesParaTrilla = async () => {
@@ -28,8 +27,8 @@ export const getLotesParaTrilla = async () => {
 };
 
 // 2. POST: Ejecutar la Trilla (Transaction Script)
-export const procesarTrilla = async (loteId, pesoEntrada, mallas) => {
-  const orgId = await getCurrentOrgId();
+export const procesarTrilla = async (loteId, pesoEntrada, mallas, orgId, userId) => {
+  
   
   // A. Obtener el ID del usuario actual para auditoría
   const { data: { user } } = await supabase.auth.getUser();
