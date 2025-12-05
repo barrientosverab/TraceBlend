@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { Lock, Save, Loader2 } from 'lucide-react';
-
+import {toast} from 'sonner';
 export function RestablecerPassword() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,10 +18,10 @@ export function RestablecerPassword() {
 
       if (error) throw error;
       
-      alert("✅ ¡Contraseña actualizada! Serás redirigido.");
+      toast.success("✅ ¡Contraseña actualizada! Serás redirigido.");
       navigate('/'); // Vamos al Dashboard
     } catch (error) {
-      alert("Error: " + error.message);
+      toast.error("Error: ",{description: error.message});
     } finally {
       setLoading(false);
     }

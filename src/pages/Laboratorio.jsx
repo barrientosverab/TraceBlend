@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FlaskConical, ClipboardCheck, Scale, Ruler, Coffee } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getLotesParaAnalisis, guardarAnalisis } from '../services/laboratorioService';
+import {toast} from 'sonner';
 
 export function Laboratorio() {
   const { orgId } = useAuth();
@@ -56,7 +57,7 @@ export function Laboratorio() {
     setLoading(true);
     try {
       await guardarAnalisis(selectedLote.id, analisis, orgId);
-      alert("✅ Reporte de Laboratorio registrado exitosamente");
+      toast.success("✅ Reporte de Laboratorio registrado exitosamente");
       
       // Limpiar y recargar
       setAnalisis({
@@ -67,7 +68,7 @@ export function Laboratorio() {
       setSelectedLote(null);
       cargarLotes();
     } catch (e) {
-      alert("Error: " + e.message);
+      toast.error("Error: ",{description: e.message});
     } finally {
       setLoading(false);
     }

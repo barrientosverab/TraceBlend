@@ -5,6 +5,7 @@ import {
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine, Label 
 } from 'recharts';
+import {toast} from 'sonner';
 
 // Hooks y Servicios
 import { useAuth } from '../hooks/useAuth';
@@ -87,7 +88,7 @@ export function Tueste() {
         setEnvData(prev => ({ ...prev, ambient_temp: result.ambientTemp }));
       }
     } catch (error) {
-      alert("Error: " + error.message);
+      toast.error("Error: ",{description: error.message});
       setFileName('');
     }
   };
@@ -95,7 +96,7 @@ export function Tueste() {
   const cargarDesdeHistorial = (batch) => {
     try {
       const data = batch.roast_log_data;
-      if (!data) return alert("Registro sin datos.");
+      if (!data) return toast.warning("Registro sin datos.");
 
       if (data.points) {
         setDataPoints(data.points);
@@ -124,14 +125,14 @@ export function Tueste() {
 
       setFileName(`Historial: ${new Date(batch.roast_date).toLocaleString()}`);
       setActiveTab('cockpit');
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error(e.message); }
   };
 
   const handleSave = async () => {
     if (!config.machineId || !config.greenId || !config.pesoEntrada || !pesoSalida) {
-      return alert("Completa los datos del lote.");
+      return toast.warning("Completa los datos del lote.");
     }
-    if (dataPoints.length === 0) return alert("Carga un perfil de tueste.");
+    if (dataPoints.length === 0) return toast.warning("Carga un perfil de tueste.");
 
     try {
       const payload = {
@@ -153,24 +154,24 @@ export function Tueste() {
       
       await guardarTueste(payload, consumo, orgId, user.id);
       
-      alert("✅ Tueste registrado exitosamente");
+      toast.success("Tueste registrado exitosamente");
       setFileName(''); setDataPoints([]); setEvents([]); setPesoSalida('');
       setConfig({ ...config, pesoEntrada: '' });
       setEnvData({ ambient_temp: '', relative_humidity: '', bean_temp: '', bean_humidity: '' });
       cargarDatos();
-    } catch (e) { alert("Error al guardar: " + e.message); }
+    } catch (e) { toast.error("Error al guardar: ",{description: e.message}); }
   };
 
   const MachineForm = () => {
     const [m, setM] = useState({nombre:'', marca:'', capacidad:''});
     const save = async () => {
-      if(!m.nombre) return alert("Nombre requerido");
+      if(!m.nombre) return toast.warning("Nombre requerido");
       try {
         await crearMaquina(m, orgId); 
-        alert("Máquina creada"); 
+        toast.success("Máquina creada"); 
         cargarDatos(); 
         setM({nombre:'', marca:'', capacidad:''});
-      } catch(e) { alert(e.message); }
+      } catch(e) { toast.error({description: e.message}); }
     };
     return (
       <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow space-y-4">

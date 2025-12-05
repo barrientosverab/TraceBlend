@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'; // <--- IMPORTACIÓN CORRECTA
 import { 
   LayoutDashboard, PackageSearch, Truck, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut 
 } from 'lucide-react';
+import {toast} from 'sonner';
 import { supabase } from '../../services/supabaseClient';
 
 export function Sidebar() {
@@ -28,9 +29,21 @@ export function Sidebar() {
   );
 
   const handleLogout = async () => {
-    if (confirm("¿Salir del sistema?")) {
-        await signOut();
-    }
+    toast.warning("¿Estás seguro de salir del sistema?", {
+      description: "Tendrás que iniciar sesión nuevamente.",
+      action: {
+        label: 'Salir',
+        onClick: async () => {
+            // Aquí ejecutamos la acción real al hacer clic en "Salir"
+            await signOut();
+            toast.success("Sesión cerrada correctamente");
+        },
+      },
+      cancel: {
+        label: 'Cancelar',
+      },
+      duration: 5000, // Damos tiempo suficiente para decidir
+    });
   };
 
   return (

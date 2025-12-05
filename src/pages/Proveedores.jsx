@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, MapPin, FileText, Save, Globe } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import {toast} from 'sonner';
 import { crearProveedor } from '../services/proveedoresService';
 
 export function Proveedores() {
@@ -28,7 +29,7 @@ export function Proveedores() {
     setLoading(true);
     try {
     await crearProveedor(formData, orgId);
-    alert("✅ Proveedor y Finca registrados exitosamente");
+    toast.success("Proveedor y Finca registrados exitosamente");
     
     // RESET COMPLETO (Todos los campos vuelven a su estado inicial)
     setFormData({
@@ -44,7 +45,7 @@ export function Proveedores() {
       pais: 'BO' // Volvemos al default
     });
   } catch (error) {
-    alert("Error: " + error.message);
+    toast.error("Error al registrar: ",{description: error.message});
   } finally {
     setLoading(false);
   }

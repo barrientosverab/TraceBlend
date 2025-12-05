@@ -3,6 +3,7 @@ import { Package, Plus, Save, Box, ArrowRight, ShoppingBag } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth';
 import { getProductos, crearProducto, getBatchesDisponibles, registrarEmpaque } from '../services/empaqueService';
 import { getLotesVerdesParaVenta } from '../services/empaqueService';
+import {toast} from 'sonner';
 
 export function Empaque() {
   const { orgId, user } = useAuth();
@@ -51,8 +52,8 @@ const cargarDatos = async () => {
     : 0;
 
   const handleEmpacar = async () => {
-    if (!selectedBatchId || !selectedProductId || !cantidad) return alert("Completa los datos");
-    if (pesoTotalEmpaqueKg > batchSeleccionado.peso_disponible) return alert("No hay suficiente café en este lote tostado.");
+    if (!selectedBatchId || !selectedProductId || !cantidad) return toast.warning("Completa los datos");
+    if (pesoTotalEmpaqueKg > batchSeleccionado.peso_disponible) return toast.warning("No hay suficiente café en este lote tostado.");
 
     setLoading(true);
     try {
@@ -61,17 +62,17 @@ const cargarDatos = async () => {
         product_id: selectedProductId,
         cantidad: cantidad
       }, orgId, user.id);
-      alert("✅ Producto Empacado y sumado al Inventario Final");
+      toast.success("✅ Producto Empacado y sumado al Inventario Final");
       setCantidad('');
       cargarDatos(); // Recargar saldos
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error({description: e.message}); }
     finally { setLoading(false); }
   };
 
   // --- LÓGICA DE PRODUCTOS ---
 const handleCrearProducto = async () => {
-  if (!newProd.nombre || !newProd.peso_gramos) return alert("Faltan datos");
-  if (tipoProducto === 'verde' && !newProd.green_id) return alert("Selecciona el lote de origen");
+  if (!newProd.nombre || !newProd.peso_gramos) return toast.warning("Faltan datos");
+  if (tipoProducto === 'verde' && !newProd.green_id) return toast.warning("Selecciona el lote de origen");
 
   setLoading(true);
   try {
@@ -79,10 +80,10 @@ const handleCrearProducto = async () => {
       ...newProd, 
       tipo: tipoProducto // Enviamos el tipo
     }, orgId);
-    alert("Producto Creado");
+    toast.success("Producto Creado");
     setNewProd({ nombre: '', sku: '', peso_gramos: '', precio: '', green_id: '' });
     cargarDatos();
-  } catch (e) { alert(e.message); }
+  } catch (e) { toast.error({description: e.message}); }
   finally { setLoading(false); }
 };
 

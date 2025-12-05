@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Truck } from 'lucide-react';
+import { Save, SunSnow, Truck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { crearLote } from '../services/lotesService';
+import {toast} from (Sonner);
 import { getProveedores } from '../services/proveedoresService';
 
 export function Recepcion() {
@@ -35,12 +36,12 @@ export function Recepcion() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.finca_id) return alert("Selecciona un proveedor");
+    if (!formData.finca_id) return toast.warning("Debes seleccionar un proveedor");
     
     setLoading(true);
     try {
       await crearLote(formData, orgId);
-      alert("✨ Lote registrado correctamente!");
+      toast.success("Lote registrado correctamente!");
       
       // <--- CORRECCIÓN: Resetear el formulario correctamente
       setFormData({ 
@@ -54,7 +55,7 @@ export function Recepcion() {
         notas: ''
       });
     } catch (error) {
-      alert("Error: " + error.message);
+      toast.error("Error al registrar lote: ", {description: error.message});
     } finally {
       setLoading(false);
     }

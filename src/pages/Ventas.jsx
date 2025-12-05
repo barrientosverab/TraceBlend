@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Users, Plus, Trash2, CheckCircle, Search, DollarSign, Package, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth'; 
 import { getClientes, crearCliente, getCatalogoVentas, registrarVenta } from '../services/ventasService';
+import { toast } from 'sonner';
 
 export function Ventas() {
   const { orgId, user } = useAuth(); // Inyección de dependencias
@@ -64,7 +65,9 @@ export function Ventas() {
 
     // 2. Validar Stock Visual (El Backend volverá a validar al guardar)
     if (cantidadActual + 1 > producto.stock) {
-      alert(`⚠️ Stock insuficiente. Solo hay ${producto.stock} disponibles.`);
+      toast.warning("No puedes agregar más unidades", {
+      description: `Solo quedan ${producto.stock} disponibles en inventario.`
+    });
       return;
     }
 
@@ -100,9 +103,9 @@ export function Ventas() {
 
   // --- FINALIZAR VENTA (Transacción Atómica) ---
   const handleFinalizarVenta = async () => {
-    if (carrito.length === 0) return alert("El carrito está vacío");
-    if (!clienteSeleccionado) return alert("Seleccione un cliente");
-    if ((parseFloat(montoPagado) || 0) < totalVenta) return alert("El monto pagado es insuficiente");
+    if (carrito.length === 0) return toast.warning("El carrito está vacío");
+    if (!clienteSeleccionado) return toast.warning("Seleccione un cliente");
+    if ((parseFloat(montoPagado) || 0) < totalVenta) return toast.warning("El monto pagado es insuficiente");
 
     try {
       await registrarVenta({
@@ -111,7 +114,10 @@ export function Ventas() {
         total: totalVenta
       }, orgId, user.id); // <--- ID Críticos
 
-      alert("✅ Venta registrada exitosamente!");
+      toast.success('Venta registrada correctamente', {
+        description: `Total: Bs ${totalVenta}`,
+        duration: 4000,
+      });
       
       // Reset
       setCarrito([]);
@@ -119,19 +125,21 @@ export function Ventas() {
       setClienteSeleccionado('');
       cargarTodo(); // Recargar stock actualizado
     } catch (e) {
-      alert("❌ Error: " + e.message);
+      toast.error('No se pudo registrar la venta', {
+        description: e.message,
+      });
     }
   };
 
   const handleCrearCliente = async () => {
-    if(!newClient.razon_social || !newClient.nit) return alert("Datos incompletos");
+    if(!newClient.razon_social || !newClient.nit) return toast.warning("Datos incompletos");
     try {
       const creado = await crearCliente(newClient, orgId);
       setClientes([...clientes, creado]);
       setClienteSeleccionado(creado.id);
       setShowNewClient(false);
       setNewClient({ razon_social: '', nit: '', email: '', telefono: '' });
-    } catch (e) { alert(e.message); }
+    } catch (e) { toast.error({description: e.message}); }
   };
 
   // Filtros visuales

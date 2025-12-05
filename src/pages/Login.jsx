@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Link } from 'react-router-dom'; // <--- ¡ESTO FALTABA!
+import { Link } from 'react-router-dom';
 import { Coffee, Lock, Mail, Loader2 } from 'lucide-react';
+import {toast} from 'sonner';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export function Login() {
       if (error) throw error;
       // La redirección es automática gracias a App.jsx
     } catch (error) {
-      alert("Error de acceso: " + error.message);
+      toast.error("Error de acceso: ",{description: error.message});
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@ import {
   Package, Search, Edit2, Trash2, CheckCircle, XCircle, AlertTriangle, Save, X 
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import {toast} from 'sonner';
 import { getTodosLosProductos, actualizarProducto, toggleEstadoProducto } from '../services/productosService';
 
 export function Productos() {
@@ -37,24 +38,43 @@ export function Productos() {
   const handleSave = async () => {
     try {
       await actualizarProducto(editingProduct.id, editingProduct);
-      alert("✅ Producto actualizado correctamente");
+      toast.success("Producto actualizado correctamente");
       setEditingProduct(null);
       cargarProductos();
     } catch (e) {
-      alert("Error: " + e.message);
+      toast.error("Error al actualizar: ",{ description: error.message});
     }
   };
 
-  const handleToggleStatus = async (prod) => {
+  const handleToggleStatus = (prod) => {
     const accion = prod.is_active ? "desactivar" : "activar";
-    if (!confirm(`¿Seguro que deseas ${accion} el producto "${prod.name}"?\n\nSi lo desactivas, no aparecerá en nuevas ventas.`)) return;
-
-    try {
-      await toggleEstadoProducto(prod.id, !prod.is_active);
-      cargarProductos();
-    } catch (e) {
-      alert("Error: " + e.message);
-    }
+    
+    // Lanzamos la pregunta. El código sigue ejecutándose, no se detiene aquí.
+    toast(`¿Deseas ${accion} el producto "${prod.name}"?`, {
+      description: "Si lo desactivas, no aparecerá en nuevas ventas.",
+      action: {
+        label: 'Confirmar',
+        // La magia ocurre AQUÍ, solo si el usuario hace clic:
+        onClick: async () => {
+          try {
+            // 1. Llamamos a la API
+            await toggleEstadoProducto(prod.id, !prod.is_active);
+            
+            // 2. Recargamos la tabla
+            await cargarProductos();
+            
+            // 3. Feedback de éxito
+            toast.success(`Producto ${accion}do correctamente`);
+          } catch (e) {
+            toast.error("Error al cambiar estado", { description: e.message });
+          }
+        },
+      },
+      cancel: {
+        label: 'Cancelar', // Solo cierra el toast, no hace nada más
+      },
+      duration: 5000, // Damos tiempo suficiente para leer
+    });
   };
 
   const filtrados = productos.filter(p => 

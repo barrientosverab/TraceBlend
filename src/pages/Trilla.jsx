@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, ArrowRight, Scale, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getLotesParaTrilla, procesarTrilla } from '../services/trillaService';
+import {toast} from 'sonner';
 
 export function Trilla() {
   const { orgId, user } = useAuth(); // Necesita user.id también
@@ -62,24 +63,56 @@ export function Trilla() {
 
   const handleProcesar = async () => {
     if (!selectedLote) return;
-    if (entradaNum <= 0) return alert("Ingresa un peso de entrada válido");
-    if (entradaNum > selectedLote.stock_actual) return alert("No tienes suficiente stock");
+    if (entradaNum <= 0) { toast.warning("Ingresa un peso de entrada válido"); return;}
+    if (entradaNum > selectedLote.stock_actual) { toast.warning("No tienes suficiente stock"); return;}
     
     // Validación Física: No puedes sacar más kilos de los que metiste
-    if (mermaInvisible < -0.1) return alert("¡Error Físico! La suma de salidas supera la entrada.");
+    if (mermaInvisible < -0.1) { toast.error("¡Error Físico! La suma de salidas supera la entrada."); return;}
 
-    if (!confirm(`¿Confirmas procesar ${entradaNum}kg?`)) return;
+    toast(`¿Confirmas procesar ${entradaNum}kg?`, {
+      description: `Lote: ${selectedLote.codigo_lote} - Finca: ${selectedLote.nombre_finca}`,
+      action: {
+        label: 'Procesar',
+        onClick: async () => {
+          // --- AQUÍ SE MUEVE TU LÓGICA DE GUARDADO ---
+          setLoading(true);
+          try {
+            // Asegúrate de pasar orgId y user.id si ya aplicaste la refactorización anterior
+            await procesarTrilla(selectedLote.id, entradaNum, mallas, orgId, user.id);
+            
+            toast.success("Trilla procesada correctamente", {
+                description: "Inventario actualizado."
+            });
+
+            // Reset del formulario
+            setPesoEntrada('');
+            setMallas(mallas.map(m => ({ ...m, peso: '' })));
+            setSelectedLote(null);
+            cargarLotes();
+          } catch (error) {
+            toast.error("Error al procesar", { description: error.message });
+          } finally {
+            setLoading(false);
+          }
+          // ---------------------------------------------
+        },
+      },
+      cancel: {
+        label: 'Cancelar',
+      },
+      duration: 8000, // Damos tiempo suficiente para leer
+    });
 
     setLoading(true);
     try {
       await procesarTrilla(selectedLote.id, entradaNum, mallas, orgId, user.id);
-      alert("✅ Trilla procesada correctamente.");
+      toast.success("✅ Trilla procesada correctamente.");
       setPesoEntrada('');
       setMallas(mallas.map(m => ({ ...m, peso: '' })));
       setSelectedLote(null);
       cargarLotes();
     } catch (error) {
-      alert("❌ Error: " + error.message);
+      toast.error("❌ Error: ",{description: error.message});
     } finally {
       setLoading(false);
     }

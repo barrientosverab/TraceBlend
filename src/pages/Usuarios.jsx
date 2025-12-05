@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getUsuarios, actualizarRol, invitarUsuario } from '../services/usuariosService';
+import { toast } from 'sonner';
 
 export function Usuarios() {
   const { orgId, user } = useAuth();
@@ -32,7 +33,7 @@ export function Usuarios() {
   };
 
   const handleInvite = async () => {
-    if (!inviteData.email || !inviteData.nombre) return alert("Datos incompletos");
+    if (!inviteData.email || !inviteData.nombre) return toast.error('Datos incompletos');
     
     try {
       const res = await invitarUsuario(inviteData, orgId);
@@ -47,16 +48,33 @@ export function Usuarios() {
       setInviteData({ email: '', nombre: '', rol: 'operador' });
       cargarUsuarios(); // Recargar lista
     } catch (e) {
-      alert("Error al invitar: " + e.message);
+      toast.error('No se pudo enviar la invitación', { description: e.message });
     }
   };
 
-  const handleRoleChange = async (userId, newRole) => {
-    if (!confirm("¿Cambiar rol de usuario?")) return;
-    try {
-      await actualizarRol(userId, newRole);
-      cargarUsuarios();
-    } catch (e) { alert(e.message); }
+  const handleRoleChange = (userId, newRole) => {
+    // Lanzamos el Toast de confirmación
+    toast(`¿Deseas cambiar el rol a "${newRole}"?`, {
+      description: "El usuario tendrá nuevos permisos en el sistema.",
+      action: {
+        label: 'Confirmar Cambio',
+        onClick: async () => {
+          // --- AQUÍ SE MUEVE TU LÓGICA ---
+          try {
+            await actualizarRol(userId, newRole);
+            await cargarUsuarios(); // Esperamos a que recargue para ver el cambio
+            toast.success(`Rol actualizado a ${newRole}`);
+          } catch (e) {
+            toast.error("Error al actualizar rol", { description: e.message });
+          }
+          // -------------------------------
+        },
+      },
+      cancel: {
+        label: 'Cancelar',
+      },
+      duration: 5000, // Tiempo para decidir
+    });
   };
 
   if (loading) return <div className="p-8 text-center text-stone-400">Cargando equipo...</div>;
@@ -98,7 +116,7 @@ export function Usuarios() {
               <span className="font-bold text-lg text-stone-900 bg-stone-100 px-2 py-1 rounded">{successInfo.password}</span>
             </div>
             <button 
-              onClick={() => {navigator.clipboard.writeText(successInfo.password); alert("Copiado!");}}
+              onClick={() => {navigator.clipboard.writeText(successInfo.password); toast.success('Contraseña copiada');}}
               className="text-emerald-600 hover:bg-emerald-50 p-2 rounded flex gap-1 items-center text-xs font-bold"
             >
               <Copy size={14}/> Copiar
