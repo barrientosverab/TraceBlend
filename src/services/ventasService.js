@@ -1,3 +1,4 @@
+// src/services/ventasService.js
 import { supabase } from './supabaseClient';
 
 export const getClientes = async () => {
@@ -6,12 +7,11 @@ export const getClientes = async () => {
   return data;
 };
 
-// RECIBIR orgId COMO PARÁMETRO
 export const crearCliente = async (cliente, orgId) => {
   const { data, error } = await supabase
     .from('clients')
     .insert([{
-      organization_id: orgId, // Usar parámetro
+      organization_id: orgId,
       business_name: cliente.razon_social,
       tax_id: cliente.nit,
       email: cliente.email,
@@ -24,18 +24,21 @@ export const crearCliente = async (cliente, orgId) => {
 };
 
 export const getCatalogoVentas = async () => {
-    const { data: productos, error } = await supabase
+  const { data: productos, error } = await supabase
     .from('products')
     .select('id, name, sku, sale_price, package_weight_grams, is_roasted, finished_inventory(current_stock), source_green_inventory_id')
     .eq('is_active', true);
+
   if (error) throw error;
+
   return productos.map(p => {
     let stockVisual = 0;
     if (p.is_roasted) {
        stockVisual = p.finished_inventory?.reduce((acc, i) => acc + i.current_stock, 0) || 0;
     } else {
-       stockVisual = '∞'; 
+       stockVisual = 9999; // Café verde se maneja distinto, simplificado para POS
     }
+    
     return {
       id: p.id,
       tipo: 'PRODUCTO',
@@ -48,42 +51,34 @@ export const getCatalogoVentas = async () => {
   });
 };
 
-// RECIBIR orgId y userId COMO PARÁMETROS
+/**
+ * Registra la venta usando una transacción atómica RPC.
+ * Si falla el stock, falla toda la venta.
+ */
 export const registrarVenta = async (datosVenta, orgId, userId) => {
-  // Eliminamos las llamadas await getCurrentOrgId();
-  
-  // 1. Crear Cabecera
-  const { data: orden, error: errOrden } = await supabase
-    .from('sales_orders')
-    .insert([{
-      organization_id: orgId, // Usar parámetro
-      client_id: datosVenta.cliente_id,
-      seller_id: userId,      // Usar parámetro
-      order_date: new Date(),
-      status: 'completed',
-      total_amount: datosVenta.total,
-      payment_method: 'efectivo' 
-    }])
-    .select().single();
+  // Preparamos el payload limpio para la función SQL
+  const itemsPayload = datosVenta.carrito.map(item => ({
+    product_id: item.tipo === 'PRODUCTO' ? item.id : null,
+    green_inventory_id: item.tipo !== 'PRODUCTO' ? item.id : null,
+    cantidad: parseInt(item.cantidad),
+    unit_price: parseFloat(item.precio_venta)
+  }));
 
-  if (errOrden) throw errOrden;
-
-  // 2. Crear Detalle
-  const items = datosVenta.carrito.map(item => {
-    const baseItem = {
-      organization_id: orgId, // Usar parámetro
-      sales_order_id: orden.id,
-      quantity: parseInt(item.cantidad),
-      unit_price: parseFloat(item.precio_venta)
-    };
-    if (item.tipo === 'PRODUCTO') {
-      return { ...baseItem, product_id: item.id, green_inventory_id: null };
-    } else {
-      return { ...baseItem, product_id: null, green_inventory_id: item.id };
-    }
+  const { data, error } = await supabase.rpc('registrar_venta_transaccion', {
+    p_org_id: orgId,
+    p_client_id: datosVenta.cliente_id,
+    p_seller_id: userId,
+    p_total: datosVenta.total,
+    p_items: itemsPayload
   });
 
-  const { error: errItems } = await supabase.from('sales_order_items').insert(items);
-  if (errItems) throw errItems;
-  return true;
+  if (error) {
+    // Detectamos el error específico de la constraint
+    if (error.message.includes('check_stock_no_negativo') || error.message.includes('check_verde_no_negativo')) {
+      throw new Error("⛔ STOCK INSUFICIENTE: Alguien compró estos productos segundos antes que tú.");
+    }
+    throw error;
+  }
+
+  return data; // Retorna el ID de la orden
 };

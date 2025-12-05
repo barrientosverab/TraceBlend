@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FlaskConical, ClipboardCheck, Scale, Ruler, Coffee } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { getLotesParaAnalisis, guardarAnalisis } from '../services/laboratorioService';
 
 export function Laboratorio() {
+  const { orgId } = useAuth();
   const [lotes, setLotes] = useState([]);
   const [selectedLote, setSelectedLote] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -53,7 +55,7 @@ export function Laboratorio() {
     if (!selectedLote) return;
     setLoading(true);
     try {
-      await guardarAnalisis(selectedLote.id, analisis);
+      await guardarAnalisis(selectedLote.id, analisis, orgId);
       alert("✅ Reporte de Laboratorio registrado exitosamente");
       
       // Limpiar y recargar

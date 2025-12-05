@@ -1,6 +1,5 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth'; // <--- Importante: Usar el hook
+import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
 
 // Páginas
@@ -14,12 +13,12 @@ import { Trilla } from './pages/Trilla';
 import { Tueste } from './pages/Tueste';
 import { Empaque } from './pages/Empaque';
 import { Ventas } from './pages/Ventas';
+import { Productos } from './pages/Productos';
 import { RecuperarPassword } from './pages/RecuperarPassword';
 import { RestablecerPassword } from './pages/RestablecerPassword';
 
 function App() {
-  // ELIMINA CUALQUIER const [loading, setLoading] = useState(...) AQUÍ
-  const { isAuthenticated, loading } = useAuth(); // <--- Usamos SOLO esto
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -48,7 +47,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-          <Route path="/" element={<Layout />} />
+        {/* CORRECCIÓN: El Layout envuelve a las demás rutas (No se cierra aquí con />) */}
+        <Route path="/" element={<Layout />}>
+          
           <Route index element={<Dashboard />} />
           <Route path="usuarios" element={<Usuarios/>}/>
           <Route path="proveedores" element={<Proveedores />} />
@@ -58,10 +59,14 @@ function App() {
           <Route path="tueste" element={<Tueste/>} />
           <Route path="empaque" element={<Empaque />} />
           <Route path="ventas" element={<Ventas />} />
+          <Route path="productos" element={<Productos />} />          
+          {/* Redirección por defecto */}
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    );
-  }
+          
+        </Route> {/* <--- AQUÍ se cierra el Layout */}
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 export default App;

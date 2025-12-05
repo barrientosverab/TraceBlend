@@ -1,227 +1,320 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Users, Plus, Trash2, CheckCircle, Search, DollarSign } from 'lucide-react';
-import {useAuth} from '../hooks/useAuth';
+import { ShoppingCart, Users, Plus, Trash2, CheckCircle, Search, DollarSign, Package, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth'; 
 import { getClientes, crearCliente, getCatalogoVentas, registrarVenta } from '../services/ventasService';
 
 export function Ventas() {
-  const {orgId, user} = useAuth();
-  const [activeTab, setActiveTab] = useState('pos'); // 'pos' | 'clients'
+  const { orgId, user } = useAuth(); // Inyección de dependencias
+  const [activeTab, setActiveTab] = useState('pos');
+  const [loading, setLoading] = useState(false);
   
-  // Data
-  const [clientes, setClientes] = useState([]);
+  // Datos
   const [catalogo, setCatalogo] = useState([]);
-  const [busqueda, setBusqueda] = useState('');
-
-  // Estado POS (Carrito)
-  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
+  const [clientes, setClientes] = useState([]);
   const [carrito, setCarrito] = useState([]);
   
-  // Estado Clientes
-  const [newClient, setNewClient] = useState({ razon_social: '', nit: '', telefono: '' });
+  // Selección
+  const [busqueda, setBusqueda] = useState('');
+  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   
-  const [loading, setLoading] = useState(false);
+  // Totales
+  const [totalVenta, setTotalVenta] = useState(0);
+  const [montoPagado, setMontoPagado] = useState('');
+  const [cambio, setCambio] = useState(0);
 
+  // Modal Cliente
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClient, setNewClient] = useState({ razon_social: '', nit: '', email: '', telefono: '' });
+
+  // 1. Cargar Datos al iniciar (Filtrado por OrgID)
   useEffect(() => {
-    if(orgId) cargarTodo(); 
+    if (orgId) cargarTodo();
   }, [orgId]);
 
+  // Recalcular totales cuando cambia el carrito
+  useEffect(() => {
+    const total = carrito.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+    setTotalVenta(total);
+  }, [carrito]);
+
+  // Calcular cambio en tiempo real
+  useEffect(() => {
+    const pagado = parseFloat(montoPagado) || 0;
+    setCambio(Math.max(0, pagado - totalVenta));
+  }, [montoPagado, totalVenta]);
+
   const cargarTodo = async () => {
-    try {
-      const [c, cat] = await Promise.all([getClientes(), getCatalogoVentas()]);
-      setClientes(c);
-      setCatalogo(cat);
-    } catch (e) { console.error(e); }
-  };
-
-  // --- LÓGICA CARRITO ---
-  const agregarAlCarrito = (producto) => {
-    const cantidad = prompt(`Cantidad a vender (${producto.unidad}):\nStock disponible: ${producto.stock}`);
-    if (!cantidad) return;
-    
-    const cantNum = parseFloat(cantidad);
-    if (cantNum > producto.stock) return alert("No hay suficiente stock.");
-
-    setCarrito([...carrito, { ...producto, cantidad: cantNum, precio_venta: precioFinal }]);
-  };
-
-  const quitarDelCarrito = (index) => {
-    const newCart = [...carrito];
-    newCart.splice(index, 1);
-    setCarrito(newCart);
-  };
-
-  const totalVenta = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_venta), 0);
-
-  const handleFinalizarVenta = async () => {
-    if (!clienteSeleccionado || carrito.length === 0) return alert("Selecciona cliente y productos.");
-    if (!confirm(`¿Confirmar venta por Bs ${totalVenta.toFixed(2)}?`)) return;
-
     setLoading(true);
+    try {
+      const [prod, cli] = await Promise.all([getCatalogoVentas(), getClientes()]);
+      setCatalogo(prod);
+      setClientes(cli);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- LÓGICA CORE DEL CARRITO (Aquí estaba el error) ---
+  const handleAgregarProducto = (producto) => {
+    // 1. Buscar si ya existe en el carrito
+    const existente = carrito.find(item => item.id === producto.id);
+    const cantidadActual = existente ? existente.cantidad : 0;
+
+    // 2. Validar Stock Visual (El Backend volverá a validar al guardar)
+    if (cantidadActual + 1 > producto.stock) {
+      alert(`⚠️ Stock insuficiente. Solo hay ${producto.stock} disponibles.`);
+      return;
+    }
+
+    // 3. Actualizar Estado
+    if (existente) {
+      setCarrito(carrito.map(item => 
+        item.id === producto.id 
+          ? { ...item, cantidad: item.cantidad + 1 }
+          : item
+      ));
+    } else {
+      // Agregamos propiedades clave: precio_venta (para backend) y precio (visual)
+      setCarrito([...carrito, { 
+        ...producto, 
+        cantidad: 1, 
+        precio_venta: producto.precio // Aseguramos compatibilidad con el servicio
+      }]);
+    }
+  };
+
+  const handleQuitarProducto = (id) => {
+    const existente = carrito.find(item => item.id === id);
+    if (existente.cantidad > 1) {
+      setCarrito(carrito.map(item => item.id === id ? { ...item, cantidad: item.cantidad - 1 } : item));
+    } else {
+      setCarrito(carrito.filter(item => item.id !== id));
+    }
+  };
+
+  const handleEliminarItem = (id) => {
+    setCarrito(carrito.filter(item => item.id !== id));
+  };
+
+  // --- FINALIZAR VENTA (Transacción Atómica) ---
+  const handleFinalizarVenta = async () => {
+    if (carrito.length === 0) return alert("El carrito está vacío");
+    if (!clienteSeleccionado) return alert("Seleccione un cliente");
+    if ((parseFloat(montoPagado) || 0) < totalVenta) return alert("El monto pagado es insuficiente");
+
     try {
       await registrarVenta({
         cliente_id: clienteSeleccionado,
-        carrito: carrito,
+        carrito: carrito, // El servicio transformará esto
         total: totalVenta
-      }, orgId, user.id);
+      }, orgId, user.id); // <--- ID Críticos
+
       alert("✅ Venta registrada exitosamente!");
+      
+      // Reset
       setCarrito([]);
+      setMontoPagado('');
       setClienteSeleccionado('');
-      cargarTodo(); // Actualizar stocks
-    } catch (e) { alert(e.message); }
-    finally { setLoading(false); }
+      cargarTodo(); // Recargar stock actualizado
+    } catch (e) {
+      alert("❌ Error: " + e.message);
+    }
   };
 
-  // --- LÓGICA CLIENTES ---
   const handleCrearCliente = async () => {
-    if (!newClient.razon_social) return;
+    if(!newClient.razon_social || !newClient.nit) return alert("Datos incompletos");
     try {
-      await crearCliente(newClient, orgId);
-      alert("Cliente creado");
-      setNewClient({ razon_social: '', nit: '', telefono: '' });
-      cargarTodo();
+      const creado = await crearCliente(newClient, orgId);
+      setClientes([...clientes, creado]);
+      setClienteSeleccionado(creado.id);
+      setShowNewClient(false);
+      setNewClient({ razon_social: '', nit: '', email: '', telefono: '' });
     } catch (e) { alert(e.message); }
   };
 
-  // Filtrado de catálogo
-  const catalogoFiltrado = catalogo.filter(p => 
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  // Filtros visuales
+  const productosFiltrados = catalogo.filter(p => 
+    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || 
+    p.detalle.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  if (loading) return <div className="p-8 text-center text-stone-500">Cargando catálogo...</div>;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-stone-50 overflow-hidden">
+    <div className="flex h-screen bg-stone-100 overflow-hidden">
       
-      {/* HEADER TABS */}
-      <div className="flex bg-white border-b border-stone-200 px-6 py-2 gap-4">
-        <button onClick={() => setActiveTab('pos')} className={`px-4 py-2 font-bold rounded-lg flex gap-2 ${activeTab === 'pos' ? 'bg-emerald-100 text-emerald-800' : 'text-stone-500 hover:bg-stone-100'}`}>
-          <ShoppingCart size={18}/> Punto de Venta
-        </button>
-        <button onClick={() => setActiveTab('clients')} className={`px-4 py-2 font-bold rounded-lg flex gap-2 ${activeTab === 'clients' ? 'bg-emerald-100 text-emerald-800' : 'text-stone-500 hover:bg-stone-100'}`}>
-          <Users size={18}/> Clientes
-        </button>
+      {/* SECCIÓN IZQUIERDA: CATÁLOGO */}
+      <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
+        {/* Barra de Búsqueda */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 text-stone-400" size={20}/>
+            <input 
+              className="w-full pl-10 p-2 bg-stone-50 border border-stone-200 rounded-lg outline-none focus:border-emerald-500 transition-colors"
+              placeholder="Buscar producto o café..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-emerald-50 px-4 rounded-lg border border-emerald-100">
+            <Users size={18} className="text-emerald-700"/>
+            <select 
+              className="bg-transparent text-emerald-800 font-bold outline-none text-sm w-48"
+              value={clienteSeleccionado}
+              onChange={e => setClienteSeleccionado(e.target.value)}
+            >
+              <option value="">Cliente Final (Anónimo)</option>
+              {clientes.map(c => <option key={c.id} value={c.id}>{c.business_name}</option>)}
+            </select>
+            <button onClick={() => setShowNewClient(true)} className="bg-emerald-600 text-white p-1 rounded hover:bg-emerald-700 ml-2">
+              <Plus size={16}/>
+            </button>
+          </div>
+        </div>
+
+        {/* Grid de Productos */}
+        <div className="flex-1 overflow-y-auto grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start pb-20">
+          {productosFiltrados.map(item => (
+            <button 
+              key={item.id}
+              onClick={() => handleAgregarProducto(item)}
+              disabled={item.stock <= 0}
+              className={`
+                flex flex-col items-start p-4 rounded-xl border text-left transition-all relative group
+                ${item.stock > 0 
+                  ? 'bg-white border-stone-200 hover:border-emerald-500 hover:shadow-md cursor-pointer' 
+                  : 'bg-stone-50 border-stone-100 opacity-60 cursor-not-allowed'}
+              `}
+            >
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 mb-3 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <Package size={20}/>
+              </div>
+              <h3 className="font-bold text-stone-800 leading-tight">{item.nombre}</h3>
+              <p className="text-xs text-stone-500 mt-1">{item.detalle}</p>
+              
+              <div className="mt-4 flex justify-between items-end w-full">
+                <span className="font-bold text-lg text-emerald-700">Bs {item.precio}</span>
+                <span className={`text-xs font-bold px-2 py-1 rounded ${item.stock > 10 ? 'bg-stone-100 text-stone-600' : 'bg-red-100 text-red-600'}`}>
+                  {item.stock > 1000 ? '+1k' : item.stock} {item.unidad}
+                </span>
+              </div>
+              
+              {/* Overlay Stock Agotado */}
+              {item.stock <= 0 && (
+                <div className="absolute inset-0 bg-white/50 flex items-center justify-center backdrop-blur-[1px] rounded-xl">
+                  <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg transform -rotate-12">AGOTADO</span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-hidden p-6">
-        
-        {/* VISTA POS */}
-        {activeTab === 'pos' && (
-          <div className="flex h-full gap-6">
-            
-            {/* IZQUIERDA: CATÁLOGO */}
-            <div className="w-2/3 flex flex-col bg-white rounded-2xl shadow border border-stone-200 overflow-hidden">
-              <div className="p-4 border-b border-stone-200 flex gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-2.5 text-stone-400" size={20}/>
-                  <input 
-                    className="w-full pl-10 p-2 border rounded-lg bg-stone-50 outline-none focus:ring-2 focus:ring-emerald-500" 
-                    placeholder="Buscar producto o café..." 
-                    value={busqueda}
-                    onChange={e => setBusqueda(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-                {catalogoFiltrado.map(prod => (
-                  <div 
-                    key={`${prod.tipo}-${prod.id}`} 
-                    onClick={() => agregarAlCarrito(prod)}
-                    className="p-4 rounded-xl border border-stone-200 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all bg-white group"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded ${prod.tipo === 'PRODUCTO' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {prod.tipo === 'PRODUCTO' ? 'BOLSA' : 'GRANEL'}
-                      </span>
-                      <span className="font-mono text-xs text-stone-400 font-bold">{prod.stock} {prod.unidad}</span>
-                    </div>
-                    <h3 className="font-bold text-stone-800 leading-tight mb-1 group-hover:text-emerald-700">{prod.nombre}</h3>
-                    <p className="text-xs text-stone-500">{prod.detalle}</p>
-                    <div className="mt-3 font-bold text-lg text-emerald-800">
-                      {prod.precio > 0 ? `Bs ${prod.precio}` : 'Precio Variable'}
-                    </div>
-                  </div>
-                ))}
-              </div>
+      {/* SECCIÓN DERECHA: CARRITO (SIDEBAR) */}
+      <div className="w-96 bg-white shadow-2xl border-l border-stone-200 flex flex-col z-20">
+        <div className="p-5 border-b border-stone-100 bg-emerald-900 text-white">
+          <div className="flex items-center gap-3 mb-1">
+            <ShoppingCart className="text-emerald-400"/>
+            <h2 className="text-lg font-bold">Orden de Venta</h2>
+          </div>
+          <p className="text-emerald-200 text-xs">
+            {carrito.length} items • {new Date().toLocaleDateString()}
+          </p>
+        </div>
+
+        {/* Lista de Items */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {carrito.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-stone-300 gap-2">
+              <ShoppingCart size={48} strokeWidth={1}/>
+              <p>El carrito está vacío</p>
             </div>
-
-            {/* DERECHA: TICKET / CARRITO */}
-            <div className="w-1/3 flex flex-col bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden">
-              <div className="p-4 bg-stone-800 text-white">
-                <h2 className="font-bold flex items-center gap-2"><ShoppingCart/> Orden de Venta</h2>
-              </div>
-              
-              {/* Selector Cliente */}
-              <div className="p-4 border-b border-stone-100 bg-stone-50">
-                <select 
-                  className="w-full p-2 border rounded bg-white text-sm"
-                  value={clienteSeleccionado}
-                  onChange={e => setClienteSeleccionado(e.target.value)}
-                >
-                  <option value="">-- Seleccionar Cliente --</option>
-                  {clientes.map(c => <option key={c.id} value={c.id}>{c.business_name}</option>)}
-                </select>
-              </div>
-
-              {/* Lista Items */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {carrito.length === 0 && <p className="text-center text-stone-400 text-sm mt-10">Carrito vacío</p>}
-                {carrito.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm border-b border-stone-100 pb-2">
-                    <div>
-                      <p className="font-bold text-stone-700">{item.nombre}</p>
-                      <p className="text-xs text-stone-500">{item.cantidad} {item.unidad} x {item.precio_venta}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold">{(item.cantidad * item.precio_venta).toFixed(2)}</span>
-                      <button onClick={() => quitarDelCarrito(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Total y Botón */}
-              <div className="p-6 bg-stone-50 border-t border-stone-200">
-                <div className="flex justify-between items-center mb-4 text-xl font-bold text-stone-800">
-                  <span>Total</span>
-                  <span>Bs {totalVenta.toFixed(2)}</span>
+          ) : (
+            carrito.map(item => (
+              <div key={item.id} className="flex gap-3 items-center bg-stone-50 p-3 rounded-lg border border-stone-100">
+                <div className="w-10 h-10 bg-white rounded flex items-center justify-center text-stone-400 border border-stone-100 font-bold text-xs">
+                  x{item.cantidad}
                 </div>
-                <button 
-                  onClick={handleFinalizarVenta}
-                  disabled={loading || carrito.length === 0}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 text-white font-bold rounded-xl flex justify-center items-center gap-2"
-                >
-                  <CheckCircle size={20}/> Finalizar Venta
+                <div className="flex-1">
+                  <p className="font-bold text-sm text-stone-800 leading-tight">{item.nombre}</p>
+                  <p className="text-xs text-stone-500">Bs {item.precio} / {item.unidad}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-stone-800">{(item.precio * item.cantidad).toFixed(2)}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button onClick={() => handleAgregarProducto(item)} className="p-1 text-emerald-600 hover:bg-emerald-100 rounded"><Plus size={14}/></button>
+                  <button onClick={() => handleQuitarProducto(item.id)} className="p-1 text-amber-600 hover:bg-amber-100 rounded"><div className="w-3 h-0.5 bg-current"></div></button>
+                </div>
+                <button onClick={() => handleEliminarItem(item.id)} className="p-2 text-stone-400 hover:text-red-500 transition-colors">
+                  <Trash2 size={16}/>
                 </button>
               </div>
+            ))
+          )}
+        </div>
+
+        {/* Resumen Financiero */}
+        <div className="p-6 bg-stone-50 border-t border-stone-200 space-y-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-stone-500 font-medium">Subtotal</span>
+            <span className="font-bold text-stone-800 text-xl">Bs {totalVenta.toFixed(2)}</span>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-stone-400 uppercase">Monto Recibido</label>
+            <div className="relative">
+              <DollarSign size={16} className="absolute left-3 top-3 text-stone-400"/>
+              <input 
+                type="number" 
+                className="w-full pl-9 p-2 border rounded-lg font-mono font-bold text-stone-800 focus:border-emerald-500 outline-none"
+                placeholder="0.00"
+                value={montoPagado}
+                onChange={e => setMontoPagado(e.target.value)}
+              />
             </div>
           </div>
-        )}
 
-        {/* VISTA CLIENTES */}
-        {activeTab === 'clients' && (
-          <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow border border-stone-200">
-            <h3 className="font-bold text-lg mb-6">Nuevo Cliente</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <input className="col-span-2 p-3 border rounded" placeholder="Razón Social / Nombre" value={newClient.razon_social} onChange={e => setNewClient({...newClient, razon_social: e.target.value})} />
-              <input className="p-3 border rounded" placeholder="NIT / CI" value={newClient.nit} onChange={e => setNewClient({...newClient, nit: e.target.value})} />
-              <input className="p-3 border rounded" placeholder="Teléfono" value={newClient.telefono} onChange={e => setNewClient({...newClient, telefono: e.target.value})} />
-            </div>
-            <button onClick={handleCrearCliente} className="w-full py-2 bg-stone-800 text-white rounded font-bold hover:bg-black">Guardar Cliente</button>
-            
-            <div className="mt-8">
-              <h4 className="font-bold text-sm text-stone-500 uppercase mb-3">Directorio</h4>
-              <div className="space-y-2">
-                {clientes.map(c => (
-                  <div key={c.id} className="p-3 border rounded flex justify-between">
-                    <span className="font-bold">{c.business_name}</span>
-                    <span className="text-stone-500 font-mono text-sm">{c.tax_id || 'S/N'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-stone-200">
+            <span className="text-sm font-bold text-stone-600">Cambio</span>
+            <span className={`font-mono font-bold text-lg ${cambio < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+              Bs {cambio.toFixed(2)}
+            </span>
           </div>
-        )}
 
+          <button 
+            onClick={handleFinalizarVenta}
+            disabled={carrito.length === 0}
+            className={`
+              w-full py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all
+              ${carrito.length > 0 ? 'bg-stone-900 hover:bg-black hover:scale-[1.02]' : 'bg-stone-300 cursor-not-allowed'}
+            `}
+          >
+            <CheckCircle size={20}/> CONFIRMAR VENTA
+          </button>
+        </div>
       </div>
+
+      {/* MODAL NUEVO CLIENTE */}
+      {showNewClient && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-stone-800 mb-4">Registrar Cliente</h3>
+            <div className="space-y-3">
+              <input className="w-full p-2 border rounded" placeholder="Razón Social / Nombre" value={newClient.razon_social} onChange={e=>setNewClient({...newClient, razon_social:e.target.value})}/>
+              <input className="w-full p-2 border rounded" placeholder="NIT / CI" value={newClient.nit} onChange={e=>setNewClient({...newClient, nit:e.target.value})}/>
+              <input className="w-full p-2 border rounded" placeholder="Email (Opcional)" value={newClient.email} onChange={e=>setNewClient({...newClient, email:e.target.value})}/>
+              <input className="w-full p-2 border rounded" placeholder="Teléfono" value={newClient.telefono} onChange={e=>setNewClient({...newClient, telefono:e.target.value})}/>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={()=>setShowNewClient(false)} className="flex-1 py-2 text-stone-500 hover:bg-stone-100 rounded-lg">Cancelar</button>
+              <button onClick={handleCrearCliente} className="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-lg">Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

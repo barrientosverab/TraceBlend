@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { UserPlus, MapPin, FileText, Save, Globe } from 'lucide-react'; // Agregamos Globe
+import { UserPlus, MapPin, FileText, Save, Globe } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { crearProveedor } from '../services/proveedoresService';
 
 export function Proveedores() {
+  const { orgId } = useAuth();
   const [loading, setLoading] = useState(false);
   
   // Estado inicial actualizado
@@ -25,7 +27,7 @@ export function Proveedores() {
     e.preventDefault();
     setLoading(true);
     try {
-    await crearProveedor(formData);
+    await crearProveedor(formData, orgId);
     alert("✅ Proveedor y Finca registrados exitosamente");
     
     // RESET COMPLETO (Todos los campos vuelven a su estado inicial)

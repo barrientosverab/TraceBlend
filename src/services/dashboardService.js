@@ -1,8 +1,4 @@
-// src/services/dashboardService.js
 import { supabase } from './supabaseClient';
-
-// NOTA: Eliminamos la importación de 'authService' para evitar bloqueos.
-// Ahora recibimos 'orgId' como argumento desde el componente.
 
 export const getDashboardStats = async (orgId) => {
   if (!orgId) throw new Error("OrgID requerido para dashboard");
@@ -10,7 +6,8 @@ export const getDashboardStats = async (orgId) => {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
-  // 1. Total Ventas del Mes
+  // Mantenemos las estadísticas agregadas (son ligeras)
+  // 1. Ventas del Mes
   const { data: ventas } = await supabase
     .from('sales_orders')
     .select('total_amount')
@@ -19,7 +16,7 @@ export const getDashboardStats = async (orgId) => {
   
   const totalVentasMes = ventas?.reduce((sum, v) => sum + v.total_amount, 0) || 0;
 
-  // 2. Inventario de Oro Verde
+  // 2. Stock Verde
   const { data: verde } = await supabase
     .from('green_coffee_warehouse')
     .select('quantity_kg')
@@ -28,7 +25,7 @@ export const getDashboardStats = async (orgId) => {
   
   const stockVerdeKg = verde?.reduce((sum, v) => sum + v.quantity_kg, 0) || 0;
 
-  // 3. Inventario de Producto Terminado
+  // 3. Stock Producto Terminado
   const { data: producto } = await supabase
     .from('finished_inventory')
     .select('current_stock')
@@ -36,7 +33,7 @@ export const getDashboardStats = async (orgId) => {
   
   const stockProductoUnidades = producto?.reduce((sum, p) => sum + p.current_stock, 0) || 0;
 
-  // 4. Lotes en Proceso
+  // 4. Pendientes
   const { count: lotesPendientes } = await supabase
     .from('raw_inventory_batches')
     .select('*', { count: 'exact', head: true })
@@ -54,34 +51,21 @@ export const getDashboardStats = async (orgId) => {
 export const getActividadReciente = async (orgId) => {
   if (!orgId) throw new Error("OrgID requerido para actividad");
 
-  // Consultamos las 3 tablas usando el ID inyectado
-  const [empaques, tuestes, ventas] = await Promise.all([
-    supabase.from('packaging_logs').select('created_at, units_created, products(name)').eq('organization_id', orgId).limit(5).order('created_at', {ascending:false}),
-    supabase.from('roast_batches').select('created_at, roasted_weight_output, machine_id').eq('organization_id', orgId).limit(5).order('created_at', {ascending:false}),
-    supabase.from('sales_orders').select('order_date, total_amount, clients(business_name)').eq('organization_id', orgId).limit(5).order('order_date', {ascending:false})
-  ]);
+  // AHORA: Una sola consulta simple y paginada a la Vista SQL
+  const { data, error } = await supabase
+    .from('recent_activity_view') // <--- Nuestra nueva vista
+    .select('*')
+    .eq('organization_id', orgId)
+    .order('activity_date', { ascending: false })
+    .limit(10); // Paginación nativa de base de datos
 
-  const listaEmpaques = (empaques.data || []).map(x => ({
-    fecha: new Date(x.created_at),
-    tipo: 'empaque',
-    texto: `Empacadas ${x.units_created} uds de ${x.products?.name}`
+  if (error) throw error;
+
+  // Adaptador ligero para que el Frontend no se rompa
+  return data.map(item => ({
+    id: item.id,
+    fecha: item.activity_date,
+    tipo: item.activity_type,
+    texto: item.description // Mapeamos la columna calculada SQL al nombre que espera la UI
   }));
-
-  const listaTuestes = (tuestes.data || []).map(x => ({
-    fecha: new Date(x.created_at),
-    tipo: 'tueste',
-    texto: `Tostado de ${x.roasted_weight_output}kg finalizado`
-  }));
-
-  const listaVentas = (ventas.data || []).map(x => ({
-    fecha: new Date(x.order_date),
-    tipo: 'venta',
-    texto: `Venta por Bs ${x.total_amount} a ${x.clients?.business_name || 'Cliente Final'}`
-  }));
-
-  const mix = [...listaEmpaques, ...listaTuestes, ...listaVentas]
-    .sort((a, b) => b.fecha - a.fecha)
-    .slice(0, 10);
-
-  return mix;
 };

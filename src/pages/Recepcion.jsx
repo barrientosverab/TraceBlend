@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Truck } from 'lucide-react'; // Coffee no se usaba, lo quité para limpiar
+import { Save, Truck } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { crearLote } from '../services/lotesService';
 import { getProveedores } from '../services/proveedoresService';
 
 export function Recepcion() {
+  const { orgId } = useAuth();
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -37,7 +39,7 @@ export function Recepcion() {
     
     setLoading(true);
     try {
-      await crearLote(formData);
+      await crearLote(formData, orgId);
       alert("✨ Lote registrado correctamente!");
       
       // <--- CORRECCIÓN: Resetear el formulario correctamente

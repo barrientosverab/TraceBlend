@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, ArrowRight, Scale, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { getLotesParaTrilla, procesarTrilla } from '../services/trillaService';
 
 export function Trilla() {
+  const { orgId, user } = useAuth(); // Necesita user.id también
   const [lotes, setLotes] = useState([]);
   const [selectedLote, setSelectedLote] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -70,7 +72,7 @@ export function Trilla() {
 
     setLoading(true);
     try {
-      await procesarTrilla(selectedLote.id, entradaNum, mallas);
+      await procesarTrilla(selectedLote.id, entradaNum, mallas, orgId, user.id);
       alert("✅ Trilla procesada correctamente.");
       setPesoEntrada('');
       setMallas(mallas.map(m => ({ ...m, peso: '' })));

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Save, Box, ArrowRight, ShoppingBag } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { getProductos, crearProducto, getBatchesDisponibles, registrarEmpaque } from '../services/empaqueService';
 import { getLotesVerdesParaVenta } from '../services/empaqueService';
 
 export function Empaque() {
+  const { orgId, user } = useAuth();
   const [activeTab, setActiveTab] = useState('pack'); // 'pack' | 'products'
   
   // Datos
@@ -58,7 +60,7 @@ const cargarDatos = async () => {
         batch_id: selectedBatchId,
         product_id: selectedProductId,
         cantidad: cantidad
-      });
+      }, orgId, user.id);
       alert("✅ Producto Empacado y sumado al Inventario Final");
       setCantidad('');
       cargarDatos(); // Recargar saldos
@@ -76,7 +78,7 @@ const handleCrearProducto = async () => {
     await crearProducto({
       ...newProd, 
       tipo: tipoProducto // Enviamos el tipo
-    });
+    }, orgId);
     alert("Producto Creado");
     setNewProd({ nombre: '', sku: '', peso_gramos: '', precio: '', green_id: '' });
     cargarDatos();

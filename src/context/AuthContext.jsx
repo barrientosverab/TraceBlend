@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 
@@ -9,88 +8,87 @@ export const AuthProvider = ({ children }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper para cargar perfil sin bloquear
+  // Helper robusto para cargar perfil
   const fetchProfile = async (userId) => {
+    console.log(`Auth: Fetching profile for ${userId}...`);
     try {
+      // Usamos .maybeSingle() para evitar errores 406 si no existe
       const { data, error } = await supabase
         .from('profiles')
         .select('role, organization_id, first_name')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error("Auth: Error DB fetching profile:", error.message);
+        return null;
+      }
       
-      if (!error && data) {
+      if (data) {
+        console.log("Auth: Profile loaded:", data);
         setProfile(data);
+        return data;
+      } else {
+        console.warn("Auth: Profile not found via API (Check RLS)");
+        return null;
       }
     } catch (e) {
-      console.error("Auth: Error cargando perfil (no crítico)", e);
+      console.error("Auth: Network error fetching profile:", e);
+      return null;
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // 1. TIMEOUT DE SEGURIDAD
-    // Si Supabase se cuelga por extensiones, a los 2 seg forzamos la entrada
-    const safetyTimer = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn("Auth: Timeout de seguridad activado. Forzando fin de carga.");
-        setLoading(false);
-      }
-    }, 2000);
-
-    const initAuth = async () => {
-      console.log("Auth: Iniciando verificación...");
+    // 1. Lógica de Inicialización
+    const initializeAuth = async () => {
+      console.log("Auth: Initializing...");
       try {
-        // Intentamos obtener sesión
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        // Obtenemos sesión
+        const { data: { session } } = await supabase.auth.getSession();
 
-        if (session?.user && mounted) {
-          console.log("Auth: Sesión encontrada vía getSession");
+        if (session?.user) {
+          console.log("Auth: Session found");
           setUser(session.user);
-          await fetchProfile(session.user.id);
+          // Intentamos cargar perfil, pero NO bloqueamos el 'loading' por siempre si falla
+          await fetchProfile(session.user.id); 
         }
       } catch (error) {
-        console.error("Auth: Error en getSession:", error.message);
+        console.error("Auth: Init error:", error);
       } finally {
         if (mounted) {
-          console.log("Auth: Finalizando carga (vía initAuth)");
-          setLoading(false);
-          clearTimeout(safetyTimer); // Cancelamos el timer si esto terminó bien
+          setLoading(false); // Siempre terminamos de cargar
         }
       }
     };
 
-    initAuth();
+    initializeAuth();
 
-    // 2. ESCUCHA DE EVENTOS (Plan B que suele ser más rápido)
+    // 2. Escuchar cambios en tiempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`Auth Event: ${event}`);
       
-      if (mounted) {
-        if (session?.user) {
-          setUser(session.user);
-          // Solo buscamos perfil si no lo tenemos ya (para evitar parpadeos)
-          if (!profile) {
-             await fetchProfile(session.user.id);
-          }
-        } else {
-          setUser(null);
-          setProfile(null);
-        }
-        
-        // Si llega un evento, desbloqueamos inmediatamente
-        setLoading(false);
-        clearTimeout(safetyTimer); 
+      if (!mounted) return;
+
+      if (session?.user) {
+        setUser(session.user);
+        // Si es un login o refresh y no tenemos perfil, búscalo
+        // IMPORTANTE: No usamos 'await' bloqueante aquí para no congelar la UI
+        fetchProfile(session.user.id); 
+      } else {
+        setUser(null);
+        setProfile(null);
       }
+      
+      setLoading(false);
     });
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, []); // Array vacío para correr solo al montar
+  }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();

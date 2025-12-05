@@ -1,26 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  TrendingUp, Package, Coffee, AlertCircle, Calendar, DollarSign, Activity 
+  TrendingUp, Package, Coffee, AlertCircle, DollarSign, Activity 
 } from 'lucide-react';
-// 1. IMPORTAMOS EL HOOK DE AUTH
 import { useAuth } from '../hooks/useAuth';
 import { getDashboardStats, getActividadReciente } from '../services/dashboardService';
 
 export function Dashboard() {
-  // 2. OBTENEMOS EL ID DE LA ORGANIZACIÓN DEL CONTEXTO (INSTANTÁNEO)
-  const { orgId } = useAuth();
+  // 1. Obtenemos datos del contexto (authLoading es la carga de sesión)
+  const { orgId, user, loading: authLoading } = useAuth(); 
   
   const [stats, setStats] = useState({ ventas_mes: 0, stock_verde: 0, stock_producto: 0, lotes_pendientes: 0 });
   const [actividad, setActividad] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  // 2. Estado de carga PROPIO del Dashboard (para no confundir con authLoading)
+  const [loadingData, setLoadingData] = useState(true); 
 
   useEffect(() => {
-    async function load() {
-      // Si no hay orgId (raro, pero posible), no hacemos nada aún
-      if (!orgId) return;
+    // Si la autenticación aún está cargando, esperamos.
+    if (authLoading) return;
 
+    // Si terminó de cargar auth pero no hay organización, paramos la carga de datos.
+    if (!orgId) {
+      setLoadingData(false);
+      return; 
+    }
+
+    async function load() {
       try {
-        // 3. PASAMOS EL ORGID COMO ARGUMENTO
+        setLoadingData(true); // <--- CORREGIDO (Antes decía setLoading)
+        
         const [s, a] = await Promise.all([
           getDashboardStats(orgId), 
           getActividadReciente(orgId)
@@ -28,26 +36,57 @@ export function Dashboard() {
         setStats(s);
         setActividad(a);
       } catch (e) { 
-        console.error("Error cargando dashboard:", e); 
+        console.error("Dashboard error:", e); 
       } finally { 
-        setLoading(false); 
+        setLoadingData(false); // <--- CORREGIDO (Antes decía setLoading)
       }
     }
     load();
-  }, [orgId]); // Ejecutar cuando tengamos el orgId
+  }, [orgId, authLoading]);
 
-  if (loading) return <div className="p-8 text-stone-400 animate-pulse">Cargando indicadores...</div>;
+  // 3. Renderizado Condicional
 
+  // Caso A: Cargando (Ya sea Auth o Datos del Dashboard)
+  if (authLoading || (orgId && loadingData)) {
+    return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-stone-50">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-700 mb-4"></div>
+            <span className="text-stone-500 font-medium animate-pulse">
+              {authLoading ? 'Verificando sesión...' : 'Sincronizando datos...'}
+            </span>
+        </div>
+    );
+  }
+
+  // Caso B: Usuario sin Organización (Error de Datos)
+  if (!orgId) {
+    return (
+      <div className="p-10 max-w-2xl mx-auto mt-10 bg-amber-50 border border-amber-200 rounded-xl text-center">
+        <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-amber-900">Cuenta sin Organización</h2>
+        <p className="text-amber-700 mt-2 mb-6">
+          El usuario <b>{user?.email}</b> no tiene un perfil vinculado correctamente.
+        </p>
+        <button 
+             onClick={() => window.location.reload()} 
+             className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-bold transition-colors shadow-sm"
+        >
+             Reintentar Conexión
+        </button>
+      </div>
+    );
+  }
+
+  // Caso C: Dashboard Normal
   return (
-    // ... (El resto del JSX (return) se mantiene exactamente igual)
     <div className="max-w-6xl mx-auto">
-      {/* ...contenido existente... */}
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-stone-800">Panel de Control</h1>
         <p className="text-stone-500">Resumen operativo de hoy, {new Date().toLocaleDateString()}</p>
       </div>
 
-      {/* TARJETAS KPI */}
+      {/* KPI CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         
         {/* Ventas */}
