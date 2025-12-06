@@ -18,8 +18,16 @@ export const crearCliente = async (cliente, orgId) => {
       phone: cliente.telefono,
       client_type: 'retail'
     }])
-    .select().single();
-  if (error) throw error;
+    .select()
+    .single();
+
+  if (error) {
+    // Capturamos el error de duplicidad (código 23505 en Postgres)
+    if (error.code === '23505') {
+      throw new Error("Ya existe un cliente con este NIT/CI.");
+    }
+    throw error;
+  }
   return data;
 };
 
@@ -56,7 +64,6 @@ export const getCatalogoVentas = async () => {
  * Si falla el stock, falla toda la venta.
  */
 export const registrarVenta = async (datosVenta, orgId, userId) => {
-  // Preparamos el payload limpio para la función SQL
   const itemsPayload = datosVenta.carrito.map(item => ({
     product_id: item.tipo === 'PRODUCTO' ? item.id : null,
     green_inventory_id: item.tipo !== 'PRODUCTO' ? item.id : null,
@@ -69,16 +76,16 @@ export const registrarVenta = async (datosVenta, orgId, userId) => {
     p_client_id: datosVenta.cliente_id,
     p_seller_id: userId,
     p_total: datosVenta.total,
-    p_items: itemsPayload
+    p_items: itemsPayload,
+    p_payment_method: datosVenta.metodoPago // <--- Enviamos el nuevo dato
   });
 
   if (error) {
-    // Detectamos el error específico de la constraint
-    if (error.message.includes('check_stock_no_negativo') || error.message.includes('check_verde_no_negativo')) {
-      throw new Error("⛔ STOCK INSUFICIENTE: Alguien compró estos productos segundos antes que tú.");
+    if (error.message.includes('check_stock')) {
+      throw new Error("⛔ STOCK INSUFICIENTE: Verifique inventario.");
     }
     throw error;
   }
 
-  return data; // Retorna el ID de la orden
+  return data;
 };

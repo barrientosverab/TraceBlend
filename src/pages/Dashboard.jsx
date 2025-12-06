@@ -6,6 +6,7 @@ import {
 import { Link } from 'react-router-dom'; // Para navegación rápida
 import { useAuth } from '../hooks/useAuth';
 import { getDashboardStats, getActividadReciente } from '../services/dashboardService';
+import { supabase } from '../services/supabaseClient';
 
 export function Dashboard() {
   const { orgId, user, role, loading: authLoading } = useAuth();
@@ -36,6 +37,60 @@ export function Dashboard() {
       }
     }
     load();
+  }, [orgId, authLoading]);
+  
+  useEffect(() => {
+    if (authLoading) return;
+    if (!orgId) {
+      setLoadingData(false);
+      return; 
+    }
+
+    // Función de carga (extraída para poder reutilizarla)
+    const load = async () => {
+      // Nota: Opcionalmente puedes quitar el setLoadingData(true) aquí si quieres 
+      // que la actualización sea "silenciosa" sin spinner.
+      try {
+        const [s, a] = await Promise.all([
+          getDashboardStats(orgId), 
+          getActividadReciente(orgId)
+        ]);
+        setStats(s);
+        setActividad(a);
+      } catch (e) { 
+        console.error("Dashboard error:", e); 
+      } finally { 
+        setLoadingData(false); 
+      }
+    };
+
+    load(); // Carga inicial
+
+    // --- MAGIA REAL-TIME ---
+    // Escuchamos cambios en ventas e inventario
+    const channel = supabase
+      .channel('dashboard-live')
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'sales_orders' }, 
+        (payload) => {
+          // Si hay una nueva venta (INSERT) o se borra, recargamos
+          if (payload.new.organization_id === orgId || payload.old.organization_id === orgId) {
+             load(); 
+          }
+        }
+      )
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'green_coffee_warehouse' }, 
+        () => load() // Recargar si cambia el stock verde
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel); // Limpieza al salir
+    };
+
   }, [orgId, authLoading]);
 
   // Componente de Tarjeta de Acceso Rápido (UX Improvement)

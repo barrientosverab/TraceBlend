@@ -5,80 +5,87 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper robusto para cargar perfil
+  // 1. TRUCO DE MEMORIA: Leemos el caché inmediatamente al iniciar.
+  // Esto evita que 'profile' sea null durante la recarga (F5).
+  const [profile, setProfile] = useState(() => {
+    const cached = localStorage.getItem('traceblend_profile');
+    return cached ? JSON.parse(cached) : null;
+  });
+
+  // Helper para buscar datos frescos y actualizar el caché
   const fetchProfile = async (userId) => {
-    console.log(`Auth: Fetching profile for ${userId}...`);
     try {
-      // Usamos .maybeSingle() para evitar errores 406 si no existe
       const { data, error } = await supabase
         .from('profiles')
         .select('role, organization_id, first_name')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) {
-        console.error("Auth: Error DB fetching profile:", error.message);
-        return null;
-      }
-      
-      if (data) {
-        console.log("Auth: Profile loaded:", data);
+      if (!error && data) {
         setProfile(data);
-        return data;
-      } else {
-        console.warn("Auth: Profile not found via API (Check RLS)");
-        return null;
+        // 2. GUARDAMOS EN CACHÉ: Para la próxima recarga
+        localStorage.setItem('traceblend_profile', JSON.stringify(data));
       }
     } catch (e) {
-      console.error("Auth: Network error fetching profile:", e);
-      return null;
+      console.error("Auth: Error buscando perfil", e);
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // 1. Lógica de Inicialización
+    // Válvula de seguridad: Si todo falla, liberamos en 3 seg
+    const safetyTimer = setTimeout(() => {
+      if (mounted && loading) setLoading(false);
+    }, 3000);
+
     const initializeAuth = async () => {
-      console.log("Auth: Initializing...");
       try {
-        // Obtenemos sesión
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
-          console.log("Auth: Session found");
           setUser(session.user);
-          // Intentamos cargar perfil, pero NO bloqueamos el 'loading' por siempre si falla
-          await fetchProfile(session.user.id); 
+          
+          // 3. ESTRATEGIA HÍBRIDA:
+          // Si NO tenemos datos en caché, ESPERAMOS (await) obligatoriamente.
+          // Si YA tenemos caché, cargamos en segundo plano (rápido).
+          if (!profile) {
+            await fetchProfile(session.user.id);
+          } else {
+            fetchProfile(session.user.id);
+          }
+        } else {
+          // Si no hay sesión, limpiamos basura antigua
+          localStorage.removeItem('traceblend_profile');
         }
       } catch (error) {
-        console.error("Auth: Init error:", error);
+        console.error("Auth Init Error:", error);
       } finally {
         if (mounted) {
-          setLoading(false); // Siempre terminamos de cargar
+          setLoading(false);
+          clearTimeout(safetyTimer);
         }
       }
     };
 
     initializeAuth();
 
-    // 2. Escuchar cambios en tiempo real
+    // Listener de eventos (Login, Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`Auth Event: ${event}`);
-      
       if (!mounted) return;
+      if (event === 'INITIAL_SESSION') return; // Ya manejado arriba
 
       if (session?.user) {
         setUser(session.user);
-        // Si es un login o refresh y no tenemos perfil, búscalo
-        // IMPORTANTE: No usamos 'await' bloqueante aquí para no congelar la UI
-        fetchProfile(session.user.id); 
+        // Al hacer login nuevo, buscamos el perfil
+        fetchProfile(session.user.id);
       } else {
+        // Al salir, limpiamos todo
         setUser(null);
         setProfile(null);
+        localStorage.removeItem('traceblend_profile');
       }
       
       setLoading(false);
@@ -86,14 +93,22 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Dependencias vacías para correr solo una vez
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) { console.error(e); }
+    
+    // Limpieza total
     setUser(null);
     setProfile(null);
+    localStorage.removeItem('traceblend_profile');
+    setLoading(false);
+    window.location.href = '/login';
   };
 
   const value = {

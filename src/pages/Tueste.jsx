@@ -17,6 +17,28 @@ const COLORS = {
   bg: '#1a1a1a', grid: '#333333', text: '#a3a3a3', bean: '#ef4444', air: '#3b82f6', events: '#f59e0b', tooltip: 'rgba(0,0,0,0.9)'
 };
 
+  const MachineForm = ({orgId, onSuccess, toast, cargarDatos}) => {
+    const [m, setM] = useState({nombre:'', marca:'', capacidad:''});
+    const save = async () => {
+      if(!m.nombre) return toast.warning("Nombre requerido");
+      try {
+        await crearMaquina(m, orgId); 
+        toast.success("Máquina creada"); 
+        cargarDatos(); 
+        setM({nombre:'', marca:'', capacidad:''});
+      } catch(e) { toast.error({description: e.message}); }
+    };
+    return (
+      <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow space-y-4">
+        <h3 className="font-bold text-emerald-800">Nueva Tostadora</h3>
+        <input className="w-full p-2 border rounded" placeholder="Nombre (Ej: Probat 5)" value={m.nombre} onChange={e=>setM({...m, nombre:e.target.value})}/>
+        <input className="w-full p-2 border rounded" placeholder="Marca" value={m.marca} onChange={e=>setM({...m, marca:e.target.value})}/>
+        <input className="w-full p-2 border rounded" type="number" placeholder="Capacidad (Kg)" value={m.capacidad} onChange={e=>setM({...m, capacidad:e.target.value})}/>
+        <button onClick={save} className="w-full bg-emerald-600 text-white p-2 rounded font-bold">Guardar</button>
+      </div>
+    );
+  };
+
 export function Tueste() {
   const { orgId, user } = useAuth();
   const [activeTab, setActiveTab] = useState('cockpit');
@@ -162,27 +184,6 @@ export function Tueste() {
     } catch (e) { toast.error("Error al guardar: ",{description: e.message}); }
   };
 
-  const MachineForm = () => {
-    const [m, setM] = useState({nombre:'', marca:'', capacidad:''});
-    const save = async () => {
-      if(!m.nombre) return toast.warning("Nombre requerido");
-      try {
-        await crearMaquina(m, orgId); 
-        toast.success("Máquina creada"); 
-        cargarDatos(); 
-        setM({nombre:'', marca:'', capacidad:''});
-      } catch(e) { toast.error({description: e.message}); }
-    };
-    return (
-      <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow space-y-4">
-        <h3 className="font-bold text-emerald-800">Nueva Tostadora</h3>
-        <input className="w-full p-2 border rounded" placeholder="Nombre (Ej: Probat 5)" value={m.nombre} onChange={e=>setM({...m, nombre:e.target.value})}/>
-        <input className="w-full p-2 border rounded" placeholder="Marca" value={m.marca} onChange={e=>setM({...m, marca:e.target.value})}/>
-        <input className="w-full p-2 border rounded" type="number" placeholder="Capacidad (Kg)" value={m.capacidad} onChange={e=>setM({...m, capacidad:e.target.value})}/>
-        <button onClick={save} className="w-full bg-emerald-600 text-white p-2 rounded font-bold">Guardar</button>
-      </div>
-    );
-  };
 
   return (
     <div className="flex flex-col h-screen bg-stone-50 overflow-hidden">

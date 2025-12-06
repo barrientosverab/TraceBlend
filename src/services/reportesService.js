@@ -1,13 +1,13 @@
 import { supabase } from './supabaseClient';
 
 export const getReporteVentas = async (fechaInicio, fechaFin, orgId) => {
-  // Traemos las órdenes con sus items, clientes y vendedores
   const { data, error } = await supabase
     .from('sales_orders')
     .select(`
       id,
       order_date,
       total_amount,
+      payment_method,  // <--- 1. NUEVO CAMPO SOLICITADO
       client:clients(business_name),
       seller:profiles(first_name),
       items:sales_order_items (
@@ -24,15 +24,16 @@ export const getReporteVentas = async (fechaInicio, fechaFin, orgId) => {
 
   if (error) throw error;
 
-  // "Aplanamos" la data: convertimos la estructura jerárquica en una lista plana para Excel
   let reportePlano = [];
 
   data.forEach(orden => {
     orden.items.forEach(item => {
       reportePlano.push({
         fecha: new Date(orden.order_date).toLocaleDateString(),
+        hora: new Date(orden.order_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), // Bonus: Hora
         cliente: orden.client?.business_name || 'Consumidor Final',
         vendedor: orden.seller?.first_name || 'Sistema',
+        metodo_pago: orden.payment_method || 'Efectivo', // <--- 2. AGREGADO AL REPORTE
         producto: item.product?.name || item.green?.name_ref || 'Desconocido',
         cantidad: item.quantity,
         precio_unitario: item.unit_price,
