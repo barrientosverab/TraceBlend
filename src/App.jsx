@@ -1,8 +1,9 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner'; // <--- IMPORTANTE: Notificaciones
+import { Toaster } from 'sonner';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // --- 1. IMPORTACIONES LAZY (Optimización de Velocidad) ---
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
@@ -18,6 +19,9 @@ const Ventas = lazy(() => import('./pages/Ventas').then(m => ({ default: m.Venta
 const Productos = lazy(() => import('./pages/Productos').then(m => ({ default: m.Productos })));
 const RecuperarPassword = lazy(() => import('./pages/RecuperarPassword').then(m => ({ default: m.RecuperarPassword })));
 const RestablecerPassword = lazy(() => import('./pages/RestablecerPassword').then(m => ({ default: m.RestablecerPassword })));
+const Registro = lazy(() => import('./pages/Registro').then(m => ({ default: m.Registro })));
+const Reportes = lazy(() => import('./pages/Reportes').then(m => ({ default: m.Reportes })));
+const Clientes = lazy(() => import('./pages/Clientes').then(m => ({ default: m.Clientes })));
 
 // --- 2. COMPONENTE DE CARGA (Spinner elegante entre páginas) ---
 const PageLoader = () => (
@@ -59,36 +63,51 @@ function App() {
             <>
               <Route path="/login" element={<Login />} />
               <Route path="/recuperar" element={<RecuperarPassword />} />
+              <Route path="/registro" element={<Registro />} />
+              <Route path="/restablecer-password" element={<RestablecerPassword />} />
               {/* Cualquier otra ruta redirige al login */}
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
           )}
 
           {/* CASO B: AUTENTICADO (App Principal) */}
+          {/* Rutas Privadas */}
           {isAuthenticated && (
-            <>
-              {/* Rutas con Sidebar (Layout) */}
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="usuarios" element={<Usuarios />} />
-                <Route path="proveedores" element={<Proveedores />} />
+            <Route path="/" element={<Layout />}>
+              
+              {/* ACCESO GENERAL (Todos pueden entrar) */}
+              <Route index element={<Dashboard />} />
+              <Route path="ventas" element={<Ventas />} /> {/* Vendedores */}
+              
+              {/* --- ZONA DE PRODUCCIÓN (Operadores y Admins) --- */}
+              <Route element={<ProtectedRoute allowedRoles={['administrador', 'operador', 'tostador']} />}>
                 <Route path="recepcion" element={<Recepcion />} />
-                <Route path="laboratorio" element={<Laboratorio />} />
                 <Route path="trilla" element={<Trilla />} />
-                <Route path="tueste" element={<Tueste />} />
                 <Route path="empaque" element={<Empaque />} />
-                <Route path="ventas" element={<Ventas />} />
-                <Route path="productos" element={<Productos />} />
+                <Route path="proveedores" element={<Proveedores />} />
               </Route>
 
-              {/* Rutas sin Sidebar (Pantalla completa) */}
-              <Route path="/restablecer-password" element={<RestablecerPassword />} />
-              
-              {/* Redirección por defecto al Dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </>
-          )}
+              {/* --- ZONA DE CALIDAD (Laboratorio y Admins) --- */}
+              <Route element={<ProtectedRoute allowedRoles={['administrador', 'laboratorio']} />}>
+                <Route path="laboratorio" element={<Laboratorio />} />
+              </Route>
 
+              {/* --- ZONA CRÍTICA (Solo Admins y Tostadores) --- */}
+              <Route element={<ProtectedRoute allowedRoles={['administrador', 'tostador']} />}>
+                <Route path="tueste" element={<Tueste />} />
+              </Route>
+
+              {/* --- ZONA ADMINISTRATIVA BLINDADA (Solo Admin) --- */}
+              <Route element={<ProtectedRoute allowedRoles={['administrador']} />}>
+                <Route path="usuarios" element={<Usuarios />} />
+                <Route path="productos" element={<Productos />} />
+                <Route path="Reportes" element={<Reportes />} />
+                <Route path="clientes" element={<Clientes />} />
+              </Route>
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          )}
         </Routes>
       </Suspense>
     </BrowserRouter>

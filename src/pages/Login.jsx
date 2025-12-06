@@ -90,6 +90,15 @@ export function Login() {
               {loading ? <Loader2 className="animate-spin" /> : 'Ingresar al Sistema'}
             </button>
 
+            <div className="mt-6 text-center border-t border-stone-100 pt-4">
+  <p className="text-sm text-stone-500">
+    ¿Eres nuevo?{' '}
+    <Link to="/registro" className="text-emerald-600 font-bold hover:underline">
+      Crea tu cuenta gratis
+    </Link>
+  </p>
+</div>
+
           </form>
         </div>
         

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, SunSnow, Truck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { crearLote } from '../services/lotesService';
-import {toast} from (Sonner);
+import {toast} from 'sonner';
 import { getProveedores } from '../services/proveedoresService';
 
 export function Recepcion() {

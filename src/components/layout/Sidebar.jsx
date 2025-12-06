@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth'; // <--- IMPORTACIÓN CORRECTA
 import { 
-  LayoutDashboard, PackageSearch, Truck, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut 
+  LayoutDashboard, PackageSearch, Truck, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut, Archive 
 } from 'lucide-react';
 import {toast} from 'sonner';
 import { supabase } from '../../services/supabaseClient';
@@ -21,7 +21,9 @@ export function Sidebar() {
     { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'] },
     { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'] },
     { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['administrador', 'vendedor'] },
-    { path: '/productos', icon: Package, label: 'Catálogo', roles: ['administrador'] }
+    { path: '/clientes', icon: Users, label: 'Clientes CRM', roles: ['administrador', 'vendedor'] },
+    { path: '/productos', icon: Package, label: 'Catálogo', roles: ['administrador'] },
+    { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'] }
   ];
 
   const allowedItems = allMenuItems.filter(item => 

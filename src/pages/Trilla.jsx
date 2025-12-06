@@ -102,7 +102,6 @@ export function Trilla() {
       },
       duration: 8000, // Damos tiempo suficiente para leer
     });
-
     setLoading(true);
     try {
       await procesarTrilla(selectedLote.id, entradaNum, mallas, orgId, user.id);
