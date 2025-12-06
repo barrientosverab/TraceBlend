@@ -13,6 +13,7 @@ export function Sidebar() {
 
   const allMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['administrador', 'operador', 'tostador', 'vendedor'] },
+    { path: '/cierre-caja', icon: Calculator, label: 'Cierre de Caja', roles: ['administrador', 'vendedor'] },
     { path: '/usuarios', icon: Users, label: 'Usuarios', roles: ['administrador'] },
     { path: '/proveedores', icon: UserPlus, label: 'Proveedores', roles: ['administrador', 'operador'] },
     { path: '/recepcion', icon: Truck, label: 'Recepción', roles: ['administrador', 'operador'] },

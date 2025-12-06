@@ -23,6 +23,7 @@ const Registro = lazy(() => import('./pages/Registro').then(m => ({ default: m.R
 const Reportes = lazy(() => import('./pages/Reportes').then(m => ({ default: m.Reportes })));
 const Clientes = lazy(() => import('./pages/Clientes').then(m => ({ default: m.Clientes })));
 const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ default: m.Proyecciones })));
+const CierreCaja = lazy(() => import('./pages/CierreCaja').then(m => ({ default: m.CierreCaja })));
 
 // --- 2. COMPONENTE DE CARGA (Spinner elegante entre páginas) ---
 const PageLoader = () => (
@@ -77,6 +78,7 @@ function App() {
             <Route path="/" element={<Layout />}>
               
               {/* ACCESO GENERAL (Todos pueden entrar) */}
+              <Route path="cierre-caja" element={<CierreCaja />} />
               <Route index element={<Dashboard />} />
               <Route path="ventas" element={<Ventas />} /> {/* Vendedores */}
               

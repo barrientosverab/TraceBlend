@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingCart, Users, Plus, QrCode, CreditCard, Banknote, Trash2, CheckCircle, Search, DollarSign, Package, 
-  X, Check, UserPlus, Minus // Iconos adicionales importados
+  X, Check, UserPlus, Minus, Lock // Iconos adicionales importados
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth'; 
 import { getClientes, crearCliente, getCatalogoVentas, registrarVenta } from '../services/ventasService';
 import { toast } from 'sonner';
+import { obtenerResumenCaja } from '../services/cajaService'; // <--- Importar servicio caja
 
 export function Ventas() {
   const { orgId, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // <--- Hook de navegación
+  const [cajaAbierta, setCajaAbierta] = useState(null); // null = verificando, true = abierta, false = cerrada
   
   // --- DATOS ---
   const [metodoPago, setMetodoPago] = useState('Efectivo');
@@ -59,6 +63,28 @@ export function Ventas() {
       setMontoPagado(''); // Limpiar para que escriban el efectivo recibido
     }
   }, [metodoPago, totalVenta]);
+
+  useEffect(() => {
+    if (orgId && user) {
+      verificarCaja();
+    }
+  }, [orgId, user]);
+
+  const verificarCaja = async () => {
+    try {
+      const data = await obtenerResumenCaja(orgId, user.id);
+      // Si el status es 'closed', bloqueamos. Si es 'open', permitimos.
+      setCajaAbierta(data.status === 'open');
+      if (data.status === 'open') {
+        cargarTodo(); // Solo cargamos productos si la caja está abierta
+      } else {
+        setLoading(false); // Dejamos de cargar para mostrar el bloqueo
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Error verificando turno");
+    }
+  };
 
   const cargarTodo = async () => {
     setLoading(true);
@@ -172,6 +198,28 @@ export function Ventas() {
   );
 
   if (loading) return <div className="h-screen flex items-center justify-center text-stone-400 animate-pulse">Cargando Punto de Venta...</div>;
+
+  if (cajaAbierta === false) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-stone-100 p-4">
+        <div className="bg-white p-10 rounded-3xl shadow-xl text-center max-w-md border-t-8 border-amber-500">
+          <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 text-amber-600">
+            <Lock size={48} />
+          </div>
+          <h1 className="text-3xl font-bold text-stone-800 mb-2">Punto de Venta Bloqueado</h1>
+          <p className="text-stone-500 mb-8">
+            Para realizar ventas, primero debes realizar la <b>Apertura de Caja</b> indicando tu efectivo inicial.
+          </p>
+          <button 
+            onClick={() => navigate('/cierre-caja')}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg transition-all flex justify-center items-center gap-2"
+          >
+            IR A APERTURA DE CAJA
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-stone-100 overflow-hidden">
