@@ -22,6 +22,7 @@ const RestablecerPassword = lazy(() => import('./pages/RestablecerPassword').the
 const Registro = lazy(() => import('./pages/Registro').then(m => ({ default: m.Registro })));
 const Reportes = lazy(() => import('./pages/Reportes').then(m => ({ default: m.Reportes })));
 const Clientes = lazy(() => import('./pages/Clientes').then(m => ({ default: m.Clientes })));
+const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ default: m.Proyecciones })));
 
 // --- 2. COMPONENTE DE CARGA (Spinner elegante entre páginas) ---
 const PageLoader = () => (
@@ -103,6 +104,7 @@ function App() {
                 <Route path="productos" element={<Productos />} />
                 <Route path="Reportes" element={<Reportes />} />
                 <Route path="clientes" element={<Clientes />} />
+                <Route path="proyecciones" element={<Proyecciones />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />

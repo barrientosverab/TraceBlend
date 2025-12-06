@@ -1,15 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth'; // <--- IMPORTACIÓN CORRECTA
+import { useAuth } from '../../hooks/useAuth';
 import { 
-  LayoutDashboard, PackageSearch, Truck, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut, Archive 
+  LayoutDashboard, PackageSearch, Truck, Calculator, FlaskConical, Flame, Package, Users, UserPlus, Settings, ShoppingBag, LogOut, Archive 
 } from 'lucide-react';
 import {toast} from 'sonner';
 import { supabase } from '../../services/supabaseClient';
 
 export function Sidebar() {
   const location = useLocation();
-  const { role, signOut } = useAuth(); // <--- USAMOS EL HOOK, NO EL SERVICIO
+  const { role, signOut } = useAuth(); 
 
   const allMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['administrador', 'operador', 'tostador', 'vendedor'] },
@@ -18,6 +18,7 @@ export function Sidebar() {
     { path: '/recepcion', icon: Truck, label: 'Recepción', roles: ['administrador', 'operador'] },
     { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio', roles: ['administrador', 'laboratorio'] },
     { path: '/trilla', icon: Settings, label: 'Trilla', roles: ['administrador', 'operador'] },
+    { path: '/proyecciones', icon: Calculator, label: 'Simulador ROI', roles: ['administrador', 'tostador'] },
     { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'] },
     { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'] },
     { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['administrador', 'vendedor'] },
@@ -36,7 +37,6 @@ export function Sidebar() {
       action: {
         label: 'Salir',
         onClick: async () => {
-            // Aquí ejecutamos la acción real al hacer clic en "Salir"
             await signOut();
             toast.success("Sesión cerrada correctamente");
         },
@@ -44,7 +44,7 @@ export function Sidebar() {
       cancel: {
         label: 'Cancelar',
       },
-      duration: 5000, // Damos tiempo suficiente para decidir
+      duration: 5000,
     });
   };
 
