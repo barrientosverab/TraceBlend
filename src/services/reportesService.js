@@ -7,7 +7,7 @@ export const getReporteVentas = async (fechaInicio, fechaFin, orgId) => {
       id,
       order_date,
       total_amount,
-      payment_method,  // <--- 1. NUEVO CAMPO SOLICITADO
+      payment_method,
       client:clients(business_name),
       seller:profiles(first_name),
       items:sales_order_items (
