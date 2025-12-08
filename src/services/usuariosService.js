@@ -53,8 +53,9 @@ export const invitarUsuario = async (datos, orgId) => {
     password: tempPassword,
     options: {
       data: {
-        first_name: datos.nombre, // Metadata inicial
-        role: datos.rol // Metadata inicial
+        nombre: datos.nombre,          // Coincide con raw_user_meta_data->>'nombre'
+        organization_id: orgId,        // ¡CRÍTICO! Enviamos la organización
+        role: datos.rol
       }
     }
   });
