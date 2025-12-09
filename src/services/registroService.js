@@ -1,23 +1,23 @@
 import { supabase } from './supabaseClient';
 
 export const registrarNuevoCliente = async (datos) => {
-  // Solo registramos al usuario. 
-  // La Base de Datos (Trigger) se encargará de crearle su empresa automáticamente.
+  // Solo registramos al usuario enviando la "metadata" necesaria.
+  // El Trigger SQL se encargará de crear la organización y el perfil automáticamente.
+  
   const { data, error } = await supabase.auth.signUp({
     email: datos.email,
     password: datos.password,
     options: {
       data: { 
-        nombre: datos.nombre,
-        nombre_empresa: datos.empresa, // <--- ¡AQUÍ ESTÁ LA CLAVE! Enviamos lo que escribió.
-        role: 'administrador'
+        // Estos nombres deben coincidir con lo que lee el Trigger SQL
+        nombre: datos.nombre, 
+        nombre_empresa: datos.empresa 
       }
     }
   });
 
   if (error) throw error;
 
-  // Si hay confirmación de correo, data.session será null, pero no importa.
-  // La organización YA FUE CREADA en segundo plano por el trigger.
+  // No hacemos nada más. La base de datos ya hizo el trabajo sucio.
   return data;
 };
