@@ -1,40 +1,22 @@
 import { supabase } from './supabaseClient';
 
 export const registrarNuevoCliente = async (datos) => {
-  // 1. Registrar Usuario en Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // Solo registramos al usuario. 
+  // La Base de Datos (Trigger) se encargará de crearle su empresa automáticamente.
+  const { data, error } = await supabase.auth.signUp({
     email: datos.email,
     password: datos.password,
     options: {
       data: { 
-        nombre: datos.nombre, // Metadata para el Trigger inicial
-        role: 'administrador'
+        nombre: datos.nombre, // El trigger usará esto para llamar a la empresa "Tostaduría de [Nombre]"
+        // No enviamos organization_id, así el trigger sabe que debe crear una nueva.
       }
     }
   });
 
-  if (authError) throw authError;
-  
-  // SI LA CONFIRMACIÓN DE EMAIL ESTÁ ACTIVADA:
-  // authData.session será null. No podemos continuar automáticamente.
-  if (!authData.session) {
-    throw new Error("Registro exitoso. ¡Revisa tu correo para confirmar tu cuenta antes de continuar!");
-  }
+  if (error) throw error;
 
-  try {
-    // 2. LLAMADA MÁGICA: Usamos la RPC segura
-    // Esto reemplaza al insert manual y al setTimeout
-    const { data: org, error: rpcError } = await supabase.rpc('registrar_tostaduria', {
-      nombre_empresa: datos.empresa
-    });
-
-    if (rpcError) throw rpcError;
-
-    return { user: authData.user, org };
-
-  } catch (error) {
-    console.error("Error en onboarding:", error);
-    // Si falla la RPC, es un error de sistema, pero el usuario ya existe.
-    throw new Error("Tu usuario fue creado, pero hubo un error configurando la empresa. Intenta iniciar sesión.");
-  }
+  // Si hay confirmación de correo, data.session será null, pero no importa.
+  // La organización YA FUE CREADA en segundo plano por el trigger.
+  return data;
 };
