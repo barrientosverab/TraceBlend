@@ -6,7 +6,10 @@ export const registrarNuevoCliente = async (datos) => {
     email: datos.email,
     password: datos.password,
     options: {
-      data: { first_name: datos.nombre } // Metadata
+      data: { 
+        nombre: datos.nombre,
+        role: 'administrador'
+       } // Metadata
     }
   });
 
@@ -14,8 +17,7 @@ export const registrarNuevoCliente = async (datos) => {
   if (!authData.user) throw new Error("No se pudo crear el usuario");
 
   // Esperar un momento para asegurar que el Trigger de base de datos cree el perfil base
-  // (A veces es instantáneo, a veces toma milisegundos)
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
   try {
     // 2. Crear la Organización
@@ -35,8 +37,7 @@ export const registrarNuevoCliente = async (datos) => {
       .from('profiles')
       .update({
         organization_id: org.id,
-        role: 'administrador',
-        first_name: datos.nombre
+        role: 'administrador'
       })
       .eq('id', authData.user.id);
 
@@ -45,8 +46,6 @@ export const registrarNuevoCliente = async (datos) => {
     return { user: authData.user, org };
 
   } catch (error) {
-    // Si falla la creación de la empresa, idealmente deberíamos borrar el usuario
-    // Para MVP, lanzamos el error
     console.error("Error en onboarding:", error);
     throw new Error("El usuario se creó, pero hubo un error configurando la empresa. Contacta soporte.");
   }
