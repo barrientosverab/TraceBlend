@@ -8,8 +8,9 @@ export const registrarNuevoCliente = async (datos) => {
     password: datos.password,
     options: {
       data: { 
-        nombre: datos.nombre, // El trigger usará esto para llamar a la empresa "Tostaduría de [Nombre]"
-        // No enviamos organization_id, así el trigger sabe que debe crear una nueva.
+        nombre: datos.nombre,
+        nombre_empresa: datos.empresa, // <--- ¡AQUÍ ESTÁ LA CLAVE! Enviamos lo que escribió.
+        role: 'administrador'
       }
     }
   });
