@@ -30,7 +30,7 @@ export function Registro() {
     try {
       await registrarNuevoCliente(formData);
       toast.success("¡Cuenta creada exitosamente!", {
-        description: "Bienvenido a Trace Blend. Iniciando sesión..."
+        description: "Revisa tu correo para verificar tu usuario"
       });
       // Redirigir al Dashboard (el AuthContext detectará la sesión automáticamente)
       navigate('/'); 
