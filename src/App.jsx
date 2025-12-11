@@ -59,13 +59,12 @@ function App() {
       {/* Suspense maneja la carga de los componentes Lazy */}
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          
+          <Route path="/registro" element={<Registro />} />
           {/* CASO A: NO AUTENTICADO (Login y Recuperación) */}
           {!isAuthenticated && (
             <>
               <Route path="/login" element={<Login />} />
               <Route path="/recuperar" element={<RecuperarPassword />} />
-              <Route path="/registro" element={<Registro />} />
               <Route path="/restablecer-password" element={<RestablecerPassword />} />
               {/* Cualquier otra ruta redirige al login */}
               <Route path="*" element={<Navigate to="/login" replace />} />

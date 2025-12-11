@@ -1,6 +1,9 @@
 import { supabase } from './supabaseClient';
+import { Database } from '../types/supabase';
 
-export const getTodosLosClientes = async (orgId) => {
+type ClientRow = Database['public']['Tables']['clients']['Row'];
+
+export const getTodosLosClientes = async (orgId: string): Promise<ClientRow[]> => {
   const { data, error } = await supabase
     .from('clients')
     .select('*')
@@ -9,10 +12,19 @@ export const getTodosLosClientes = async (orgId) => {
     .order('business_name', { ascending: true });
 
   if (error) throw error;
-  return data;
+  return data || [];
 };
 
-export const actualizarCliente = async (id, datos) => {
+export interface ClienteForm {
+  business_name: string;
+  tax_id: string | null;
+  email: string | null;
+  phone: string | null;
+  discount_rate: string | number;
+  notes: string | null;
+}
+
+export const actualizarCliente = async (id: string, datos: ClienteForm) => {
   const { data, error } = await supabase
     .from('clients')
     .update({
@@ -20,7 +32,7 @@ export const actualizarCliente = async (id, datos) => {
       tax_id: datos.tax_id,
       email: datos.email,
       phone: datos.phone,
-      discount_rate: parseFloat(datos.discount_rate) || 0, // Nuevo campo
+      discount_rate: Number(datos.discount_rate) || 0,
       notes: datos.notes
     })
     .eq('id', id)
@@ -31,8 +43,7 @@ export const actualizarCliente = async (id, datos) => {
   return data;
 };
 
-// Soft Delete (Activar/Desactivar)
-export const toggleEstadoCliente = async (id, nuevoEstado) => {
+export const toggleEstadoCliente = async (id: string, nuevoEstado: boolean) => {
   const { error } = await supabase
     .from('clients')
     .update({ is_active: nuevoEstado })

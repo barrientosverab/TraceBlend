@@ -1,8 +1,41 @@
 import { supabase } from './supabaseClient';
+import { Json } from '../types/supabase';
+
+// Interfaces para los datos de entrada
+export interface DatosTueste {
+  machine_id: string;
+  operador?: string;
+  peso_entrada: string | number;
+  peso_salida: string | number;
+  curva_datos: any; // Objeto JSON de Artisan
+  tiempo_total: number;
+  temp_final: number;
+  ambient_temp?: string | number;
+  relative_humidity?: string | number;
+  initial_bean_temp?: string | number;
+  initial_bean_humidity?: string | number;
+}
+
+export interface ConsumoVerde {
+  id: string;
+  peso_usado: string | number;
+}
+
+// Interfaz de Salida para UI
+export interface InventarioOroItem {
+  id: string;
+  nombre: string;
+  origen: string;
+  variedad: string;
+  proceso: string;
+  densidad: string | number;
+  stock: number;
+}
 
 // GET: Inventario de Oro Verde CON DETALLES TÉCNICOS
-export const getInventarioOro = async () => {
-  const { data, error } = await supabase
+export const getInventarioOro = async (): Promise<InventarioOroItem[]> => {
+  // Bypass de tipado para lectura profunda
+  const { data, error } = await (supabase as any)
     .from('green_coffee_warehouse')
     .select(`
       id,
@@ -27,8 +60,8 @@ export const getInventarioOro = async () => {
 
   if (error) throw error;
 
-  // Aplanamos y extraemos la info técnica
-  return data.map(item => {
+  // Aplanamos y extraemos la info técnica de forma segura
+  return (data || []).map((item: any) => {
     const inputs = item.milling_processes?.milling_inputs || [];
     const loteOriginal = inputs[0]?.raw_inventory_batches; // Tomamos el primero como referencia
     
@@ -51,7 +84,7 @@ export const getInventarioOro = async () => {
 };
 
 // POST: Guardar Batch (Actualizado con nuevos campos)
-export const guardarTueste = async (datosTueste, consumoVerde, orgId, userId) => {
+export const guardarTueste = async (datosTueste: DatosTueste, consumoVerde: ConsumoVerde[], orgId: string, userId: string) => {
 
   // 1. Crear el Batch
   const { data: batch, error: errBatch } = await supabase
@@ -59,34 +92,35 @@ export const guardarTueste = async (datosTueste, consumoVerde, orgId, userId) =>
     .insert([{
       organization_id: orgId,
       machine_id: datosTueste.machine_id,
-      roast_date: new Date(),
+      roast_date: new Date().toISOString(),
       operator_name: datosTueste.operador || 'Admin', 
       
-      green_weight_input: parseFloat(datosTueste.peso_entrada),
-      roasted_weight_output: parseFloat(datosTueste.peso_salida),
+      green_weight_input: Number(datosTueste.peso_entrada),
+      roasted_weight_output: Number(datosTueste.peso_salida),
       
-      roast_log_data: datosTueste.curva_datos, 
+      roast_log_data: datosTueste.curva_datos as Json, 
       
       total_time_seconds: datosTueste.tiempo_total,
-      drop_temp: parseFloat(datosTueste.temp_final),
+      drop_temp: Number(datosTueste.temp_final),
 
       // NUEVOS CAMPOS AMBIENTALES
-      ambient_temp: parseFloat(datosTueste.ambient_temp),
-      relative_humidity: parseFloat(datosTueste.relative_humidity),
-      initial_bean_temp: parseFloat(datosTueste.initial_bean_temp),
-      initial_bean_humidity: parseFloat(datosTueste.initial_bean_humidity)
+      ambient_temp: Number(datosTueste.ambient_temp) || 0,
+      relative_humidity: Number(datosTueste.relative_humidity) || 0,
+      initial_bean_temp: Number(datosTueste.initial_bean_temp) || 0,
+      initial_bean_humidity: Number(datosTueste.initial_bean_humidity) || 0
     }])
     .select()
     .single();
 
   if (errBatch) throw errBatch;
+  if (!batch) throw new Error("No se pudo crear el batch.");
 
   // 2. Registrar consumo
   const inputs = consumoVerde.map(item => ({
     organization_id: orgId,
     roast_batch_id: batch.id,
     green_inventory_id: item.id,
-    quantity_used_kg: parseFloat(item.peso_usado)
+    quantity_used_kg: Number(item.peso_usado)
   }));
 
   const { error: errInputs } = await supabase
@@ -97,10 +131,10 @@ export const guardarTueste = async (datosTueste, consumoVerde, orgId, userId) =>
 
   return batch;
 };
+
 // GET: Historial de Tuestes Realizados
-export const getHistorialTuestes = async (orgId) => {
-  
-  const { data, error } = await supabase
+export const getHistorialTuestes = async (orgId: string) => {
+  const { data, error } = await (supabase as any)
     .from('roast_batches')
     .select(`
       id, 
@@ -116,8 +150,8 @@ export const getHistorialTuestes = async (orgId) => {
     `)
     .eq('organization_id', orgId)
     .order('roast_date', { ascending: false })
-    .limit(20); // Traemos los últimos 20
+    .limit(20);
 
   if (error) throw error;
-  return data;
+  return data || [];
 };
