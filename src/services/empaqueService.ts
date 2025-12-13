@@ -11,6 +11,7 @@ export interface ProductoNuevoForm {
   precio: string | number;
   tipo: 'tostado' | 'verde';
   green_id?: string;
+  category?: string;
 }
 
 export const getProductos = async (): Promise<ProductRow[]> => {
@@ -45,7 +46,8 @@ export const crearProducto = async (producto: ProductoNuevoForm, orgId: string) 
       sale_price: Number(producto.precio),
       is_roasted: producto.tipo === 'tostado',
       source_green_inventory_id: producto.tipo === 'verde' ? producto.green_id : null,
-      is_active: true
+      is_active: true,
+      category: producto.category
     }])
     .select()
     .single();

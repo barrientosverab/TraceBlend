@@ -1,72 +1,87 @@
 import { supabase } from './supabaseClient';
 
-export interface DashboardStats {
-  ventas_mes: number;
-  stock_verde: number;
-  stock_producto: number;
-  lotes_pendientes: number;
+export interface DashboardData {
+  ventasHoy: number;
+  gastosMes: number;
+  ventasMes: number;
+  transaccionesHoy: number;
+  ticketPromedio: number;
+  alertasStock: any[];
+  actividadReciente: any[];
+  progresoMeta: number;
 }
 
-export const getDashboardStats = async (orgId: string): Promise<DashboardStats> => {
-  if (!orgId) throw new Error("OrgID requerido");
-  
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+export const getDashboardMetrics = async (orgId: string): Promise<DashboardData> => {
+  const hoy = new Date().toISOString().split('T')[0];
+  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  // 1. Ventas
+  // 1. VENTAS (Hoy y Mes)
   const { data: ventas } = await supabase
     .from('sales_orders')
-    .select('total_amount')
+    .select('total_amount, order_date')
     .eq('organization_id', orgId)
-    .gte('order_date', firstDayOfMonth);
+    .gte('order_date', inicioMes);
+
+  // CORRECCIÓN 1: Verificamos que 'v.order_date' exista (&&) antes de usar .startsWith
+  const ventasHoyArr = ventas?.filter(v => v.order_date && v.order_date.startsWith(hoy)) || [];
+  
+  const totalVentasHoy = ventasHoyArr.reduce((sum, v) => sum + v.total_amount, 0);
   const totalVentasMes = ventas?.reduce((sum, v) => sum + v.total_amount, 0) || 0;
-
-  // 2. Verde
-  const { data: verde } = await supabase
-    .from('green_coffee_warehouse')
-    .select('quantity_kg')
+  const transacciones = ventasHoyArr.length;
+  
+  // 2. GASTOS
+  const { data: gastos } = await supabase
+    .from('expense_ledger')
+    .select('amount_paid')
     .eq('organization_id', orgId)
-    .eq('is_available', true);
-  const stockVerdeKg = verde?.reduce((sum, v) => sum + v.quantity_kg, 0) || 0;
+    .gte('payment_date', inicioMes);
+  
+  const totalGastosReales = gastos?.reduce((sum, g) => sum + g.amount_paid, 0) || 0;
+  
+  // Meta (Gastos Fijos)
+  const { data: fijos } = await supabase.from('fixed_expenses').select('amount').eq('organization_id', orgId).eq('is_active', true);
+  const metaGastosFijos = fijos?.reduce((sum, f) => sum + f.amount, 0) || 1000;
 
-  // 3. Producto
-  const { data: producto } = await supabase
+  // 3. ALERTAS DE STOCK
+  const { data: insumosBajos } = await supabase
+    .from('supplies_inventory')
+    .select('name, current_stock, unit_measure')
+    .eq('organization_id', orgId)
+    .lt('current_stock', 10)
+    .limit(5);
+
+  const { data: prodBajos } = await supabase
     .from('finished_inventory')
-    .select('current_stock')
-    .eq('organization_id', orgId);
-  const stockProductoUnidades = producto?.reduce((sum, p) => sum + (p.current_stock || 0), 0) || 0;
-
-  // 4. Pendientes
-  const { count } = await supabase
-    .from('raw_inventory_batches')
-    .select('*', { count: 'exact', head: true })
+    .select('current_stock, products(name)')
     .eq('organization_id', orgId)
-    .gt('current_quantity', 0);
+    .lt('current_stock', 5)
+    .limit(5);
+
+  const alertas = [
+    ...(insumosBajos || []).map(i => ({ 
+      tipo: 'insumo', 
+      msg: `${i.name} bajo (${i.current_stock} ${i.unit_measure})` 
+    })),
+    // CORRECCIÓN 2: Usamos p.products?.name (el signo ? evita el error si es null)
+    // Además agregamos || 'Producto' por si el nombre viniera vacío.
+    ...(prodBajos || []).map(p => ({ 
+      tipo: 'producto', 
+      msg: `${p.products?.name || 'Producto'} bajo (${p.current_stock} und)` 
+    }))
+  ];
+
+  // 4. CÁLCULOS FINALES
+  const metaDiaria = metaGastosFijos / 30; 
+  const progreso = metaDiaria > 0 ? (totalVentasHoy / metaDiaria) * 100 : 0;
 
   return {
-    ventas_mes: totalVentasMes,
-    stock_verde: stockVerdeKg,
-    stock_producto: stockProductoUnidades,
-    lotes_pendientes: count || 0
+    ventasHoy: totalVentasHoy,
+    ventasMes: totalVentasMes,
+    gastosMes: totalGastosReales,
+    transaccionesHoy: transacciones,
+    ticketPromedio: transacciones > 0 ? totalVentasHoy / transacciones : 0,
+    alertasStock: alertas,
+    actividadReciente: [],
+    progresoMeta: Math.min(progreso, 100)
   };
-};
-
-export const getActividadReciente = async (orgId: string) => {
-  // Nota: Asegúrate de que la vista 'recent_activity_view' exista en supabase.ts
-  // Si no existe en los tipos generados, usa 'as any' en .from('recent_activity_view')
-  const { data, error } = await (supabase as any)
-    .from('recent_activity_view')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('activity_date', { ascending: false })
-    .limit(10);
-
-  if (error) throw error;
-
-  return (data || []).map((item: any) => ({
-    id: item.id,
-    fecha: item.activity_date,
-    tipo: item.activity_type,
-    texto: item.description 
-  }));
 };

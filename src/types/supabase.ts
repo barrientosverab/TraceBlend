@@ -158,6 +158,54 @@ export type Database = {
           },
         ]
       }
+      expense_ledger: {
+        Row: {
+          amount_paid: number
+          created_at: string | null
+          description: string
+          expense_id: string | null
+          id: string
+          organization_id: string
+          payment_date: string
+          payment_method: string | null
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string | null
+          description: string
+          expense_id?: string | null
+          id?: string
+          organization_id: string
+          payment_date?: string
+          payment_method?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string | null
+          description?: string
+          expense_id?: string | null
+          id?: string
+          organization_id?: string
+          payment_date?: string
+          payment_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_ledger_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_ledger_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farms: {
         Row: {
           altitude_masl: number | null
@@ -250,6 +298,47 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixed_expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string | null
+          frequency: Database["public"]["Enums"]["frequency_type"]
+          id: string
+          is_active: boolean | null
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string | null
+          frequency?: Database["public"]["Enums"]["frequency_type"]
+          id?: string
+          is_active?: boolean | null
+          name: string
+          organization_id: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string | null
+          frequency?: Database["public"]["Enums"]["frequency_type"]
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_expenses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -607,8 +696,51 @@ export type Database = {
           },
         ]
       }
+      product_recipes: {
+        Row: {
+          condition: Database["public"]["Enums"]["recipe_condition"] | null
+          created_at: string | null
+          id: string
+          product_id: string
+          quantity_required: number
+          supply_id: string | null
+        }
+        Insert: {
+          condition?: Database["public"]["Enums"]["recipe_condition"] | null
+          created_at?: string | null
+          id?: string
+          product_id: string
+          quantity_required: number
+          supply_id?: string | null
+        }
+        Update: {
+          condition?: Database["public"]["Enums"]["recipe_condition"] | null
+          created_at?: string | null
+          id?: string
+          product_id?: string
+          quantity_required?: number
+          supply_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_recipes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recipes_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies_inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
+          category: string | null
           currency_sale: string | null
           id: string
           is_active: boolean | null
@@ -621,6 +753,7 @@ export type Database = {
           source_green_inventory_id: string | null
         }
         Insert: {
+          category?: string | null
           currency_sale?: string | null
           id?: string
           is_active?: boolean | null
@@ -633,6 +766,7 @@ export type Database = {
           source_green_inventory_id?: string | null
         }
         Update: {
+          category?: string | null
           currency_sale?: string | null
           id?: string
           is_active?: boolean | null
@@ -669,7 +803,7 @@ export type Database = {
           id: string
           last_name: string | null
           organization_id: string | null
-          role: Database["public"]["Enums"]["app_role_enum"] | null
+          role: string | null
         }
         Insert: {
           created_at?: string | null
@@ -678,7 +812,7 @@ export type Database = {
           id: string
           last_name?: string | null
           organization_id?: string | null
-          role?: Database["public"]["Enums"]["app_role_enum"] | null
+          role?: string | null
         }
         Update: {
           created_at?: string | null
@@ -687,7 +821,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           organization_id?: string | null
-          role?: Database["public"]["Enums"]["app_role_enum"] | null
+          role?: string | null
         }
         Relationships: [
           {
@@ -888,8 +1022,11 @@ export type Database = {
       }
       sales_order_items: {
         Row: {
+          discount_amount: number | null
+          discount_reason: string | null
           green_inventory_id: string | null
           id: string
+          is_courtesy: boolean | null
           organization_id: string
           product_id: string | null
           quantity: number
@@ -898,8 +1035,11 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          discount_amount?: number | null
+          discount_reason?: string | null
           green_inventory_id?: string | null
           id?: string
+          is_courtesy?: boolean | null
           organization_id: string
           product_id?: string | null
           quantity: number
@@ -908,8 +1048,11 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          discount_amount?: number | null
+          discount_reason?: string | null
           green_inventory_id?: string | null
           id?: string
+          is_courtesy?: boolean | null
           organization_id?: string
           product_id?: string | null
           quantity?: number
@@ -955,6 +1098,7 @@ export type Database = {
           id: string
           invoice_number: string | null
           order_date: string | null
+          order_type: string | null
           organization_id: string
           payment_method: string | null
           seller_id: string | null
@@ -967,6 +1111,7 @@ export type Database = {
           id?: string
           invoice_number?: string | null
           order_date?: string | null
+          order_type?: string | null
           organization_id: string
           payment_method?: string | null
           seller_id?: string | null
@@ -979,6 +1124,7 @@ export type Database = {
           id?: string
           invoice_number?: string | null
           order_date?: string | null
+          order_type?: string | null
           organization_id?: string
           payment_method?: string | null
           seller_id?: string | null
@@ -1037,6 +1183,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "suppliers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplies_inventory: {
+        Row: {
+          current_stock: number | null
+          id: string
+          low_stock_threshold: number | null
+          name: string
+          organization_id: string
+          unit_cost: number | null
+          unit_measure: string
+          updated_at: string | null
+        }
+        Insert: {
+          current_stock?: number | null
+          id?: string
+          low_stock_threshold?: number | null
+          name: string
+          organization_id: string
+          unit_cost?: number | null
+          unit_measure: string
+          updated_at?: string | null
+        }
+        Update: {
+          current_stock?: number | null
+          id?: string
+          low_stock_threshold?: number | null
+          name?: string
+          organization_id?: string
+          unit_cost?: number | null
+          unit_measure?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplies_inventory_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1109,6 +1296,17 @@ export type Database = {
         | "pergamino_seco"
         | "oro_verde"
         | "inferior"
+      expense_category:
+        | "alquiler"
+        | "nomina"
+        | "servicios"
+        | "insumos_cafeteria"
+        | "mantenimiento"
+        | "marketing"
+        | "impuestos"
+        | "otros"
+      frequency_type: "mensual" | "anual" | "quincenal" | "unico"
+      recipe_condition: "always" | "takeaway" | "dine_in"
       screen_size_enum:
         | "malla_18"
         | "malla_16"
@@ -1260,6 +1458,18 @@ export const Constants = {
         "oro_verde",
         "inferior",
       ],
+      expense_category: [
+        "alquiler",
+        "nomina",
+        "servicios",
+        "insumos_cafeteria",
+        "mantenimiento",
+        "marketing",
+        "impuestos",
+        "otros",
+      ],
+      frequency_type: ["mensual", "anual", "quincenal", "unico"],
+      recipe_condition: ["always", "takeaway", "dine_in"],
       screen_size_enum: [
         "malla_18",
         "malla_16",
