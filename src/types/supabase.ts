@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_history: {
+        Row: {
+          amount: number
+          id: string
+          method: string | null
+          organization_id: string | null
+          payment_date: string | null
+          receipt_url: string | null
+        }
+        Insert: {
+          amount: number
+          id?: string
+          method?: string | null
+          organization_id?: string | null
+          payment_date?: string | null
+          receipt_url?: string | null
+        }
+        Update: {
+          amount?: number
+          id?: string
+          method?: string | null
+          organization_id?: string | null
+          payment_date?: string | null
+          receipt_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_closures: {
         Row: {
           cash_withdrawals: number | null
@@ -618,19 +653,31 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          next_payment_date: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"] | null
           plan_type: string | null
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          trial_ends_at: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
+          next_payment_date?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"] | null
           plan_type?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          trial_ends_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
+          next_payment_date?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"] | null
           plan_type?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
@@ -698,30 +745,37 @@ export type Database = {
       }
       product_recipes: {
         Row: {
-          condition: Database["public"]["Enums"]["recipe_condition"] | null
           created_at: string | null
           id: string
-          product_id: string
-          quantity_required: number
+          organization_id: string | null
+          product_id: string | null
+          quantity: number
           supply_id: string | null
         }
         Insert: {
-          condition?: Database["public"]["Enums"]["recipe_condition"] | null
           created_at?: string | null
           id?: string
-          product_id: string
-          quantity_required: number
+          organization_id?: string | null
+          product_id?: string | null
+          quantity: number
           supply_id?: string | null
         }
         Update: {
-          condition?: Database["public"]["Enums"]["recipe_condition"] | null
           created_at?: string | null
           id?: string
-          product_id?: string
-          quantity_required?: number
+          organization_id?: string | null
+          product_id?: string | null
+          quantity?: number
           supply_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_recipes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_recipes_product_id_fkey"
             columns: ["product_id"]
@@ -1258,29 +1312,20 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: Json
       }
+      is_super_admin: { Args: never; Returns: boolean }
       registrar_tostaduria: { Args: { nombre_empresa: string }; Returns: Json }
-      registrar_venta_transaccion:
-        | {
-            Args: {
-              p_client_id: string
-              p_items: Json
-              p_org_id: string
-              p_seller_id: string
-              p_total: number
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_client_id: string
-              p_items: Json
-              p_org_id: string
-              p_payment_method: string
-              p_seller_id: string
-              p_total: number
-            }
-            Returns: Json
-          }
+      registrar_venta_transaccion: {
+        Args: {
+          p_client_id: string
+          p_items: Json
+          p_order_type?: string
+          p_org_id: string
+          p_payment_method: string
+          p_seller_id: string
+          p_total: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role_enum:
@@ -1315,6 +1360,8 @@ export type Database = {
         | "base_pasilla"
         | "cascarilla"
         | "sin_clasificar"
+      subscription_plan: "free_trial" | "barista" | "tostador" | "enterprise"
+      subscription_status: "active" | "past_due" | "canceled" | "trialing"
       supplier_type: "productor" | "cooperativa" | "importador"
     }
     CompositeTypes: {
@@ -1479,6 +1526,8 @@ export const Constants = {
         "cascarilla",
         "sin_clasificar",
       ],
+      subscription_plan: ["free_trial", "barista", "tostador", "enterprise"],
+      subscription_status: ["active", "past_due", "canceled", "trialing"],
       supplier_type: ["productor", "cooperativa", "importador"],
     },
   },

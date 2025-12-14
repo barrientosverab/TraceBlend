@@ -4,8 +4,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { 
   LayoutDashboard, ShoppingBag, Users, Settings, LogOut, 
   Menu, X, Coffee, Calculator, UserPlus, 
-  Truck, FlaskConical, Flame, Package, Archive, DollarSign, List, TrendingUp
+  Truck, FlaskConical, Flame, Package, Archive, DollarSign, List, TrendingUp,
+  Shield // <--- NUEVO IMPORT
 } from 'lucide-react';
+
+// TU EMAIL DE SUPER ADMIN (Debe coincidir con el de SuperAdmin.tsx)
+const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com"; 
 
 const MENU_GROUPS = [
   {
@@ -32,6 +36,7 @@ const MENU_GROUPS = [
       { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'] },
       { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'] },
       { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'] },
+      { path: '/recetas', icon: List, label: 'Recetas', roles: ['administrador'] }, // Agregué Recetas que faltaba
       { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'] },
     ]
   },
@@ -55,6 +60,9 @@ export function Sidebar() {
   const hasPermission = (roles: string[]) => {
     return roles.includes('all') || roles.includes(userRole);
   };
+
+  // Verificamos si es Super Admin
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
   return (
     <>
@@ -85,7 +93,38 @@ export function Sidebar() {
           </div>
         </div>
 
-<nav className="flex-1 overflow-y-auto py-6 px-3 space-y-8 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-700 hover:scrollbar-thumb-emerald-600 transition-colors">          {MENU_GROUPS.map((group, groupIdx) => {
+        {/* NAVEGACIÓN CON SCROLL ESTILIZADO */}
+        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-8 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-700 hover:scrollbar-thumb-emerald-600 transition-colors">
+          
+          {/* --- BOTÓN ESPECIAL SUPER ADMIN --- */}
+          {isSuperAdmin && (
+            <div className="mb-6">
+               <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 px-3 flex items-center gap-1">
+                 <Shield size={10}/> Modo Dios
+               </h3>
+               <ul>
+                 <li>
+                    <Link
+                      to="/super-admin"
+                      onClick={() => setIsOpen(false)}
+                      className={`
+                        flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-sm font-bold
+                        ${location.pathname === '/super-admin' 
+                          ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800' 
+                          : 'hover:bg-stone-800 hover:text-white text-emerald-200/70'}
+                      `}
+                    >
+                      <Shield size={18} />
+                      <span>Panel Maestro</span>
+                    </Link>
+                 </li>
+               </ul>
+               <div className="mx-3 mt-4 border-b border-stone-800"></div>
+            </div>
+          )}
+
+          {/* MENÚS NORMALES */}
+          {MENU_GROUPS.map((group, groupIdx) => {
             const visibleItems = group.items.filter(item => hasPermission(item.roles));
             if (visibleItems.length === 0) return null;
 
@@ -105,7 +144,6 @@ export function Sidebar() {
                           className={`
                             flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-sm font-medium
                             ${isActive 
-                              // ESTILO ACTIVO: Verde Esmeralda + Fondo Oscuro
                               ? 'bg-stone-800 text-emerald-400 border-l-2 border-emerald-500' 
                               : 'hover:bg-stone-800 hover:text-white border-l-2 border-transparent'}
                           `}
@@ -122,6 +160,7 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* PIE DE PÁGINA (USUARIO) */}
         <div className="p-4 border-t border-stone-800 bg-stone-950">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-full bg-emerald-800 flex items-center justify-center text-emerald-100 font-bold border border-emerald-700">
