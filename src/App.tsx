@@ -42,7 +42,6 @@ const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ defa
 // Finanzas
 const Gastos = lazy(() => import('./pages/Gastos').then(m => ({ default: m.Gastos })));
 const Insumos = lazy(() => import('./pages/Insumos').then(m => ({ default: m.Insumos })));
-const Recetas = lazy(() => import('./pages/Recetas').then(m => ({ default: m.Recetas })));
 
 // Componente de Carga
 const PageLoader = () => (
@@ -126,7 +125,6 @@ function App() {
                   <Route path="/proyecciones" element={<Proyecciones />} />
                   <Route path="/gastos" element={<Gastos />} />
                   <Route path="/insumos" element={<Insumos />} />
-                  <Route path="/recetas" element={<Recetas />} />
                 </Route>
 
               </Route> {/* Fin SubscriptionGuard */}

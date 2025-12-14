@@ -36,7 +36,6 @@ const MENU_GROUPS = [
       { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'] },
       { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'] },
       { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'] },
-      { path: '/recetas', icon: List, label: 'Recetas', roles: ['administrador'] }, // Agregué Recetas que faltaba
       { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'] },
     ]
   },
