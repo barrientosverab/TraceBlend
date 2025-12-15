@@ -6,10 +6,12 @@ import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { SubscriptionGuard } from './components/auth/SubscriptionGuard';
+import { SetupGuard } from './components/auth/SetupGuard';
 
 // --- IMPORTS DE PÁGINAS (Lazy Loading) ---
 // Autenticación & Onboarding
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
 const Registro = lazy(() => import('./pages/Registro').then(m => ({ default: m.Registro })));
 const RecuperarPassword = lazy(() => import('./pages/RecuperarPassword').then(m => ({ default: m.RecuperarPassword })));
 const RestablecerPassword = lazy(() => import('./pages/RestablecerPassword').then(m => ({ default: m.RestablecerPassword })));
@@ -89,7 +91,14 @@ function App() {
               {/* --- ZONA DE CLIENTES (Protegida por Pago) --- */}
               {/* Aquí usamos Outlet para renderizar las rutas hijas dentro del Guard */}
               <Route element={<SubscriptionGuard><Outlet/></SubscriptionGuard>}>
-                
+                {/* 1. Ruta de Onboarding (Protegida por SetupGuard para redirección inversa) */}
+                <Route path="/onboarding" element={
+                  <SetupGuard>
+                    <Onboarding />
+                  </SetupGuard>
+                } />
+
+                <Route element={<SetupGuard><Layout /></SetupGuard>}>
                 <Route path="/" element={<Dashboard />} />
                 
                 {/* POS & Caja */}
@@ -128,6 +137,7 @@ function App() {
                 </Route>
 
               </Route> {/* Fin SubscriptionGuard */}
+              </Route>
 
               {/* Redirección por defecto */}
               <Route path="*" element={<Navigate to="/" replace />} />

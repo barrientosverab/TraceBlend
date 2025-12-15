@@ -41,7 +41,8 @@ export function Registro() {
           tax_id: formData.nit, // Si tienes esta columna, si no, bórrala
           plan: 'free_trial',        // <--- CLAVE SAAS
           status: 'trialing',        // <--- CLAVE SAAS
-          trial_ends_at: trialEnd.toISOString()
+          trial_ends_at: trialEnd.toISOString(),
+          setup_completed: false
         }])
         .select()
         .single();

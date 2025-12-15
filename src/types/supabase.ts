@@ -650,32 +650,47 @@ export type Database = {
       }
       organizations: {
         Row: {
+          address: string | null
           created_at: string | null
+          currency_symbol: string | null
           id: string
+          logo_url: string | null
           name: string
           next_payment_date: string | null
+          phone: string | null
           plan: Database["public"]["Enums"]["subscription_plan"] | null
           plan_type: string | null
+          setup_completed: boolean | null
           status: Database["public"]["Enums"]["subscription_status"] | null
           trial_ends_at: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string | null
+          currency_symbol?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           next_payment_date?: string | null
+          phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"] | null
           plan_type?: string | null
+          setup_completed?: boolean | null
           status?: Database["public"]["Enums"]["subscription_status"] | null
           trial_ends_at?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string | null
+          currency_symbol?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           next_payment_date?: string | null
+          phone?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"] | null
           plan_type?: string | null
+          setup_completed?: boolean | null
           status?: Database["public"]["Enums"]["subscription_status"] | null
           trial_ends_at?: string | null
         }
