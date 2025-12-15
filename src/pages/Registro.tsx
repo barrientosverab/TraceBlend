@@ -38,7 +38,6 @@ export function Registro() {
         .from('organizations')
         .insert([{
           name: formData.orgName,
-          tax_id: formData.nit, // Si tienes esta columna, si no, bórrala
           plan: 'free_trial',        // <--- CLAVE SAAS
           status: 'trialing',        // <--- CLAVE SAAS
           trial_ends_at: trialEnd.toISOString(),
@@ -139,12 +138,6 @@ export function Registro() {
                 placeholder="Nombre de la Empresa" 
                 value={formData.orgName}
                 onChange={e => setFormData({...formData, orgName: e.target.value})}
-              />
-              <input 
-                className="p-3 border rounded-xl w-full" 
-                placeholder="NIT / Tax ID (Opcional)" 
-                value={formData.nit}
-                onChange={e => setFormData({...formData, nit: e.target.value})}
               />
               
               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex gap-3 items-start">
