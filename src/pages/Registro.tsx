@@ -14,65 +14,52 @@ export function Registro() {
     orgName: '', nit: ''
   });
 
-  const handleRegister = async () => {
+const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
+
     try {
-      // 1. Crear Usuario en Auth
+      // 1. REGISTRO EN AUTH (Enviamos todo en la metadata)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          data: { first_name: formData.firstName, last_name: formData.lastName }
+          data: {
+            // Datos Personales
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: 'administrador',
+            
+            // Datos de la Empresa (Para que el Trigger la cree)
+            org_name: formData.orgName,
+            tax_id: formData.nit
+          }
         }
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("No se pudo crear el usuario");
 
-      // 2. Crear Organización (SaaS Inicialización)
-      // Calculamos fecha fin de prueba (14 días)
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 14);
-
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert([{
-          name: formData.orgName,
-          plan: 'free_trial',        // <--- CLAVE SAAS
-          status: 'trialing',        // <--- CLAVE SAAS
-          trial_ends_at: trialEnd.toISOString(),
-          setup_completed: false
-        }])
-        .select()
-        .single();
-
-      if (orgError) throw orgError;
-
-      // 3. Crear Perfil y Vincular (Dueño)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: authData.user.id,
-          organization_id: orgData.id,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          role: 'administrador',
-          email: formData.email
-        }]);
-
-      if (profileError) throw profileError;
-
-      toast.success("¡Cuenta creada con éxito!");
-      // Login automático o redirigir a login
-      navigate('/login');
+      // 2. ¡LISTO! No hacemos insert manual a organizations.
+      // El Trigger en la base de datos ya lo hizo por nosotros.
+      
+      toast.success("Cuenta creada exitosamente");
+      
+      // Opcional: Si tienes confirmación de email activada, avisa al usuario
+      if (authData.session === null) {
+         toast.info("Por favor confirma tu correo electrónico para continuar.");
+         navigate('/login'); 
+      } else {
+         // Si no requiere confirmación, entra directo (el SetupGuard lo atrapará)
+         navigate('/'); 
+      }
 
     } catch (error: any) {
-      toast.error('Error en el registro', { description: error.message });
+      console.error(error);
+      toast.error(error.message || "Error en el registro");
     } finally {
       setLoading(false);
     }
-  };
-
+};
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-4">
       <div className="mb-8 text-center">
