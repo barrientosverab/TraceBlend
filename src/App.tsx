@@ -5,7 +5,6 @@ import { Toaster } from 'sonner';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { SubscriptionGuard } from './components/auth/SubscriptionGuard';
 import { SetupGuard } from './components/auth/SetupGuard';
 
 // --- IMPORTS DE PÁGINAS (Lazy Loading) ---
@@ -90,7 +89,6 @@ function App() {
 
               {/* --- ZONA DE CLIENTES (Protegida por Pago) --- */}
               {/* Aquí usamos Outlet para renderizar las rutas hijas dentro del Guard */}
-              <Route element={<SubscriptionGuard><Outlet/></SubscriptionGuard>}>
                 {/* 1. Ruta de Onboarding (Protegida por SetupGuard para redirección inversa) */}
                 <Route path="/onboarding" element={
                   <SetupGuard>
@@ -136,7 +134,6 @@ function App() {
                   <Route path="/insumos" element={<Insumos />} />
                 </Route>
 
-              </Route> {/* Fin SubscriptionGuard */}
               </Route>
 
               {/* Redirección por defecto */}

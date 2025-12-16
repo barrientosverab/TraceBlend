@@ -5,10 +5,9 @@ import {
   LayoutDashboard, ShoppingBag, Users, Settings, LogOut, 
   Menu, X, Coffee, Calculator, UserPlus, 
   Truck, FlaskConical, Flame, Package, Archive, DollarSign, List, TrendingUp,
-  Shield // <--- NUEVO IMPORT
+  Shield
 } from 'lucide-react';
 
-// TU EMAIL DE SUPER ADMIN (Debe coincidir con el de SuperAdmin.tsx)
 const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com"; 
 
 const MENU_GROUPS = [
