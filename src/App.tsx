@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { SubscriptionGuard } from './components/auth/SubscriptionGuard';
 import { SetupGuard } from './components/auth/SetupGuard';
 
 // --- IMPORTS DE PÁGINAS (Lazy Loading) ---
