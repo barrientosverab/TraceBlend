@@ -1,8 +1,14 @@
+import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar'; // Asegúrate de que Sidebar ya sea .tsx
-import { SubscriptionGuard } from '../auth/SubscriptionGuard';
+import { Sidebar } from './Sidebar';
 
-export const Layout = () => {
+// 1. Definimos qué propiedades puede recibir el Layout
+interface LayoutProps {
+  children?: React.ReactNode; // El "?" significa que es opcional
+}
+
+// 2. Recibimos "children" en las props
+export const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="flex h-screen w-full bg-stone-50 overflow-hidden">
       {/* Barra Lateral */}
@@ -10,8 +16,10 @@ export const Layout = () => {
 
       {/* Contenido Principal */}
       <main className="flex-1 h-full overflow-y-auto relative flex flex-col">
-        {/* Outlet renderiza la página hija correspondiente (Dashboard, Ventas, etc.) */}
-                      <SubscriptionGuard><Outlet/></SubscriptionGuard>
+        {/* LÓGICA FLEXIBLE: */}
+        {/* Si le pasamos un hijo directo (como en SuperAdmin), renderiza eso. */}
+        {/* Si no (como en Dashboard), usa el Outlet del Router. */}
+        {children || <Outlet />}
       </main>
     </div>
   );

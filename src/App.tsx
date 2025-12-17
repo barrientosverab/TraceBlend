@@ -40,6 +40,7 @@ const Usuarios = lazy(() => import('./pages/Usuarios').then(m => ({ default: m.U
 const Productos = lazy(() => import('./pages/Productos').then(m => ({ default: m.Productos })));
 const Reportes = lazy(() => import('./pages/Reportes').then(m => ({ default: m.Reportes })));
 const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ default: m.Proyecciones })));
+const Promociones = lazy(() => import('./pages/Promociones').then(m => ({ default: m.Promociones })));
 
 // Finanzas
 const Gastos = lazy(() => import('./pages/Gastos').then(m => ({ default: m.Gastos })));
@@ -83,13 +84,13 @@ function App() {
 
           {/* --- RUTAS PRIVADAS (Layout con Sidebar) --- */}
           {isAuthenticated && (
-            <Route element={<Layout />}>
-              
+              <>
               {/* RUTA SUPER ADMIN (Sin bloqueo de pago, para que tú entres siempre) */}
-              <Route path="/super-admin" element={<SuperAdmin />} />
+              <Route path="/super-admin" element={<Layout><SuperAdmin /></Layout>} />
 
               {/* --- ZONA DE CLIENTES (Protegida por Pago) --- */}
               {/* Aquí usamos Outlet para renderizar las rutas hijas dentro del Guard */}
+              <Route element={<SubscriptionGuard><Outlet/></SubscriptionGuard>}>
                 {/* 1. Ruta de Onboarding (Protegida por SetupGuard para redirección inversa) */}
                 <Route path="/onboarding" element={
                   <SetupGuard>
@@ -133,13 +134,16 @@ function App() {
                   <Route path="/proyecciones" element={<Proyecciones />} />
                   <Route path="/gastos" element={<Gastos />} />
                   <Route path="/insumos" element={<Insumos />} />
+                  <Route path="/promociones" element={<Promociones />} />
                 </Route>
+                </Route> {/* Fin del Layout+SetupGuard */}
 
               </Route>
 
               {/* Redirección por defecto */}
               <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
+            
+            </>
           )}
 
         </Routes>

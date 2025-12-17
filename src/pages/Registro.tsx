@@ -6,7 +6,7 @@ import { Coffee, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
 
 export function Registro() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Usuario, 2: Organización
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -14,24 +14,21 @@ export function Registro() {
     orgName: '', nit: ''
   });
 
-const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegister = async () => {
     setLoading(true);
-
     try {
-      // 1. REGISTRO EN AUTH (Enviamos todo en la metadata)
+      // PASO ÚNICO: Enviar todo a Auth. 
+      // La base de datos (Trigger) leerá 'org_name' y creará la empresa sola.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
-            // Datos Personales
+            // METADATA: Aquí viajan los datos para el Trigger
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: 'administrador',
-            
-            // Datos de la Empresa (Para que el Trigger la cree)
-            org_name: formData.orgName,
+            role: 'administrador', 
+            org_name: formData.orgName, // <--- ESTO ES LO QUE FALTA EN TU CÓDIGO ACTUAL
             tax_id: formData.nit
           }
         }
@@ -39,27 +36,19 @@ const handleRegister = async (e: React.FormEvent) => {
 
       if (authError) throw authError;
 
-      // 2. ¡LISTO! No hacemos insert manual a organizations.
-      // El Trigger en la base de datos ya lo hizo por nosotros.
-      
-      toast.success("Cuenta creada exitosamente");
-      
-      // Opcional: Si tienes confirmación de email activada, avisa al usuario
-      if (authData.session === null) {
-         toast.info("Por favor confirma tu correo electrónico para continuar.");
-         navigate('/login'); 
-      } else {
-         // Si no requiere confirmación, entra directo (el SetupGuard lo atrapará)
-         navigate('/'); 
-      }
+      toast.success("¡Cuenta creada con éxito!");
+      // Al desactivar 'Confirm email', esto te loguea automáticamente
+      navigate('/');
 
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Error en el registro");
+      toast.error('Error en el registro', { description: error.message });
     } finally {
       setLoading(false);
     }
-};
+  };
+
+  // ... (El resto del return con el HTML se mantiene igual, no cambia nada visual)
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-4">
       <div className="mb-8 text-center">
@@ -71,7 +60,6 @@ const handleRegister = async (e: React.FormEvent) => {
       </div>
 
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden border border-stone-100">
-        {/* Barra de Progreso */}
         <div className="h-1 bg-stone-100 w-full">
           <div className={`h-full bg-emerald-600 transition-all duration-500 ${step === 1 ? 'w-1/2' : 'w-full'}`}></div>
         </div>
@@ -125,6 +113,12 @@ const handleRegister = async (e: React.FormEvent) => {
                 placeholder="Nombre de la Empresa" 
                 value={formData.orgName}
                 onChange={e => setFormData({...formData, orgName: e.target.value})}
+              />
+              <input 
+                className="p-3 border rounded-xl w-full" 
+                placeholder="NIT / Tax ID (Opcional)" 
+                value={formData.nit}
+                onChange={e => setFormData({...formData, nit: e.target.value})}
               />
               
               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex gap-3 items-start">

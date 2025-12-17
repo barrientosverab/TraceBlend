@@ -5,7 +5,7 @@ import {
   LayoutDashboard, ShoppingBag, Users, Settings, LogOut, 
   Menu, X, Coffee, Calculator, UserPlus, 
   Truck, FlaskConical, Flame, Package, Archive, DollarSign, List, TrendingUp,
-  Shield
+  Shield, Percent
 } from 'lucide-react';
 
 const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com"; 
@@ -45,6 +45,7 @@ const MENU_GROUPS = [
       { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['administrador', 'vendedor'] },
       { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'] },
       { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'] },
+      { icon: Percent, label: 'Promociones', path: '/promociones', roles: ['administrador'] },
     ]
   }
 ];

@@ -662,6 +662,7 @@ export type Database = {
           plan_type: string | null
           setup_completed: boolean | null
           status: Database["public"]["Enums"]["subscription_status"] | null
+          tax_id: string | null
           trial_ends_at: string | null
         }
         Insert: {
@@ -677,6 +678,7 @@ export type Database = {
           plan_type?: string | null
           setup_completed?: boolean | null
           status?: Database["public"]["Enums"]["subscription_status"] | null
+          tax_id?: string | null
           trial_ends_at?: string | null
         }
         Update: {
@@ -692,6 +694,7 @@ export type Database = {
           plan_type?: string | null
           setup_completed?: boolean | null
           status?: Database["public"]["Enums"]["subscription_status"] | null
+          tax_id?: string | null
           trial_ends_at?: string | null
         }
         Relationships: []
@@ -754,6 +757,60 @@ export type Database = {
             columns: ["roast_batch_id"]
             isOneToOne: false
             referencedRelation: "roast_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_promotions: {
+        Row: {
+          created_at: string | null
+          discount_percent: number | null
+          end_date: string
+          id: string
+          is_active: boolean | null
+          is_courtesy: boolean | null
+          name: string
+          organization_id: string
+          product_id: string | null
+          start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          discount_percent?: number | null
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          is_courtesy?: boolean | null
+          name: string
+          organization_id: string
+          product_id?: string | null
+          start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          discount_percent?: number | null
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          is_courtesy?: boolean | null
+          name?: string
+          organization_id?: string
+          product_id?: string | null
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_promotions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_promotions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -1333,10 +1390,11 @@ export type Database = {
         Args: {
           p_client_id: string
           p_items: Json
-          p_order_type?: string
+          p_order_type: string
           p_org_id: string
           p_payment_method: string
           p_seller_id: string
+          p_status?: string
           p_total: number
         }
         Returns: Json

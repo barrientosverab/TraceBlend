@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Package, Plus, Search, Edit2, AlertTriangle, 
-  Trash2, X, RefreshCw 
+  Trash2, X, Save, Calculator, Calendar, History, ArrowRight 
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
-import { getInsumos, crearInsumo, actualizarStockInsumo, eliminarInsumo } from '../services/insumosService';
+import { getInsumos, crearInsumo, actualizarInsumo, eliminarInsumo, registrarHistorialCompra } from '../services/insumosService';
 import { Database } from '../types/supabase';
 
 type Insumo = Database['public']['Tables']['supplies_inventory']['Row'];
@@ -16,18 +16,50 @@ export function Insumos() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('');
 
-  // Modales
-  const [showCreate, setShowCreate] = useState(false);
-  const [editingItem, setEditingItem] = useState<Insumo | null>(null);
+  // Control del Modal
+  const [showModal, setShowModal] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(false);
 
-  // Formulario Creación
-  const [newItem, setNewItem] = useState({
-    name: '', unit_measure: 'unidades', current_stock: '', unit_cost: '', low_stock_threshold: '5'
+  // --- ESTADO DEL FORMULARIO ---
+  const [form, setForm] = useState({
+    id: '',
+    name: '',
+    unit_measure: 'ml',
+    low_stock_threshold: 1000,
+    
+    // DATOS DE COMPRA (Calculadora)
+    presentacion_nombre: 'Unidad', 
+    contenido_neto: 1000,       
+    costo_presentacion: 0,      
+    cantidad_comprada: 1,       
+    fecha_compra: new Date().toISOString().split('T')[0], // Default: Hoy
+
+    // RESULTADOS
+    costo_unitario_calculado: 0,
+    stock_calculado: 0
   });
+
+  const [stockActualBD, setStockActualBD] = useState(0);
 
   useEffect(() => {
     if (orgId) cargarDatos();
   }, [orgId]);
+
+  // --- CALCULADORA AUTOMÁTICA ---
+  useEffect(() => {
+    const costo = Number(form.costo_presentacion) || 0;
+    const contenido = Number(form.contenido_neto) || 1; 
+    const cantidad = Number(form.cantidad_comprada) || 0;
+
+    const costoPorUnidad = contenido > 0 ? (costo / contenido) : 0;
+    const stockCompra = contenido * cantidad;
+
+    setForm(prev => ({
+      ...prev,
+      costo_unitario_calculado: costoPorUnidad,
+      stock_calculado: stockCompra
+    }));
+  }, [form.costo_presentacion, form.contenido_neto, form.cantidad_comprada]);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -38,37 +70,96 @@ export function Insumos() {
     finally { setLoading(false); }
   };
 
-  const handleCrear = async () => {
-    if (!newItem.name) return toast.warning("Nombre requerido");
-    try {
-      await crearInsumo({
-        organization_id: orgId!,
-        name: newItem.name,
-        unit_measure: newItem.unit_measure,
-        current_stock: Number(newItem.current_stock) || 0,
-        unit_cost: Number(newItem.unit_cost) || 0,
-        low_stock_threshold: Number(newItem.low_stock_threshold) || 5
-      });
-      toast.success("Insumo creado");
-      setShowCreate(false);
-      setNewItem({ name: '', unit_measure: 'unidades', current_stock: '', unit_cost: '', low_stock_threshold: '5' });
-      cargarDatos();
-    } catch (e: any) { toast.error(e.message); }
+  const abrirModalCrear = () => {
+    setModoEdicion(false);
+    setStockActualBD(0);
+    setForm({
+      id: '', name: '', unit_measure: 'ml', low_stock_threshold: 500,
+      presentacion_nombre: 'Paquete', contenido_neto: 1000, costo_presentacion: 0, cantidad_comprada: 1,
+      fecha_compra: new Date().toISOString().split('T')[0],
+      costo_unitario_calculado: 0, stock_calculado: 0
+    });
+    setShowModal(true);
   };
 
-  const handleUpdateStock = async () => {
-    if (!editingItem) return;
+  const abrirModalEditar = (item: Insumo) => {
+    setModoEdicion(true);
+    setStockActualBD(item.current_stock ?? 0);
+    
+    setForm({
+      id: item.id,
+      name: item.name,
+      unit_measure: item.unit_measure,
+      low_stock_threshold: item.low_stock_threshold ?? 0,
+      
+      presentacion_nombre: 'Unidad', // Reseteamos para nueva compra
+      contenido_neto: 1, 
+      costo_presentacion: item.unit_cost ?? 0, // Sugerimos costo anterior
+      cantidad_comprada: 0, // 0 para no sumar accidentalmente
+      fecha_compra: new Date().toISOString().split('T')[0],
+
+      costo_unitario_calculado: item.unit_cost ?? 0,
+      stock_calculado: 0
+    });
+    setShowModal(true);
+  };
+
+  const handleGuardar = async () => {
+    if (!form.name) return toast.warning("El nombre es obligatorio");
+    setLoading(true);
+
     try {
-      // CORRECCIÓN 1: Aseguramos que no enviamos null al servicio
-      await actualizarStockInsumo(
-        editingItem.id, 
-        editingItem.current_stock ?? 0, 
-        editingItem.unit_cost ?? 0
-      );
-      toast.success("Inventario actualizado");
-      setEditingItem(null);
+      const costoTotalCompra = form.costo_presentacion * form.cantidad_comprada;
+      const descripcionHistorial = `Compra: ${form.cantidad_comprada} ${form.presentacion_nombre}(s) de ${form.name}`;
+
+      if (modoEdicion) {
+        // ACTUALIZAR
+        const nuevoStockTotal = stockActualBD + form.stock_calculado;
+        // Si hay compra nueva, usamos el nuevo costo, sino mantenemos el anterior
+        const nuevoCosto = form.cantidad_comprada > 0 ? form.costo_unitario_calculado : form.costo_unitario_calculado;
+
+        await actualizarInsumo(form.id, {
+          name: form.name,
+          unit_measure: form.unit_measure,
+          low_stock_threshold: form.low_stock_threshold,
+          current_stock: nuevoStockTotal,
+          unit_cost: nuevoCosto
+        });
+
+        // Registrar Historial solo si hubo compra
+        if (form.cantidad_comprada > 0) {
+            await registrarHistorialCompra(orgId!, descripcionHistorial, costoTotalCompra, form.fecha_compra);
+        }
+
+        toast.success(`Stock actualizado. Total: ${nuevoStockTotal} ${form.unit_measure}`);
+
+      } else {
+        // CREAR
+        await crearInsumo({
+          organization_id: orgId!,
+          name: form.name,
+          unit_measure: form.unit_measure,
+          low_stock_threshold: form.low_stock_threshold,
+          current_stock: form.stock_calculado,
+          unit_cost: form.costo_unitario_calculado
+        });
+
+        // Registrar Historial Inicial
+        if (form.cantidad_comprada > 0) {
+            await registrarHistorialCompra(orgId!, descripcionHistorial, costoTotalCompra, form.fecha_compra);
+        }
+        
+        toast.success("Insumo creado exitosamente");
+      }
+      
+      setShowModal(false);
       cargarDatos();
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) { 
+        toast.error("Error al guardar");
+        console.error(e);
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   const filtrados = insumos.filter(i => i.name.toLowerCase().includes(filtro.toLowerCase()));
@@ -77,166 +168,234 @@ export function Insumos() {
     <div className="flex flex-col h-[calc(100vh-64px)] bg-stone-50 overflow-hidden">
       
       {/* Header */}
-      <div className="bg-white border-b border-stone-200 px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm z-10">
+      <div className="bg-white border-b border-stone-200 px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm z-10">
         <div>
-          <h1 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-stone-800 flex items-center gap-2">
             <Package className="text-emerald-600"/> Inventario de Insumos
           </h1>
-          <p className="text-xs text-stone-500">Materiales, envases y suministros.</p>
+          <p className="text-sm text-stone-500">Gestiona stock y costos de materia prima.</p>
         </div>
         
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-2.5 text-stone-400" size={18}/>
+        <div className="flex gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-72">
+            <Search className="absolute left-3 top-3 text-stone-400" size={18}/>
             <input 
-              className="w-full pl-9 p-2 border rounded-lg bg-stone-50 focus:bg-white transition-colors outline-none text-sm"
+              className="w-full pl-10 p-2.5 border rounded-xl bg-stone-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all outline-none text-sm"
               placeholder="Buscar insumo..."
               value={filtro}
               onChange={e => setFiltro(e.target.value)}
             />
           </div>
-          <button onClick={() => setShowCreate(true)} className="bg-stone-900 text-white p-2 rounded-lg hover:bg-black transition-colors shadow-md">
-            <Plus size={20}/>
+          <button onClick={abrirModalCrear} className="bg-stone-900 hover:bg-black text-white px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-stone-200 flex items-center gap-2 font-bold">
+            <Plus size={20}/> <span className="hidden md:inline">Nuevo</span>
           </button>
         </div>
       </div>
 
-      {/* Lista Grid */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        {loading ? <p className="text-center text-stone-400 mt-10">Cargando inventario...</p> : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Grid de Insumos */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {loading && insumos.length === 0 ? (
+            <div className="flex justify-center items-center h-40 text-stone-400 gap-2">
+                <div className="animate-spin w-5 h-5 border-2 border-current border-t-transparent rounded-full"/> Cargando...
+            </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtrados.map(item => {
-              // CORRECCIÓN 2: Usamos ?? 0 para comparaciones seguras
               const stock = item.current_stock ?? 0;
               const umbral = item.low_stock_threshold ?? 0;
               const isLow = stock <= umbral;
               
               return (
-                <div key={item.id} className={`bg-white p-4 rounded-xl border shadow-sm transition-all relative group ${isLow ? 'border-amber-200 bg-amber-50/30' : 'border-stone-200 hover:border-emerald-300'}`}>
+                <div key={item.id} className={`bg-white p-5 rounded-2xl border transition-all group relative overflow-hidden ${isLow ? 'border-amber-200 shadow-amber-100' : 'border-stone-200 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-50'}`}>
                   
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-bold text-stone-800">{item.name}</h3>
-                      {/* CORRECCIÓN 3: Formateo seguro de precio */}
-                      <p className="text-xs text-stone-500">
-                        Costo: Bs {(item.unit_cost ?? 0).toFixed(2)} / {item.unit_measure}
-                      </p>
-                    </div>
-                    {isLow && (
-                      <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <AlertTriangle size={10}/> BAJO
-                      </span>
-                    )}
-                  </div>
+                  {isLow && <div className="absolute top-0 right-0 w-16 h-16 bg-amber-100 rounded-bl-full -mr-8 -mt-8 z-0"></div>}
 
-                  <div className="flex justify-between items-end mt-4">
-                    <div>
-                      <p className="text-[10px] text-stone-400 uppercase font-bold">En Stock</p>
-                      {/* CORRECCIÓN 4: Visualización segura */}
-                      <p className={`text-2xl font-mono font-bold ${isLow ? 'text-amber-600' : 'text-stone-700'}`}>
-                        {stock} <span className="text-sm font-sans font-normal text-stone-400">{item.unit_measure}</span>
-                      </p>
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center text-stone-600 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                        <Package size={20}/>
+                      </div>
+                      {isLow && (
+                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                          <AlertTriangle size={10}/> BAJO
+                        </span>
+                      )}
                     </div>
-                    <button 
-                      onClick={() => setEditingItem(item)}
-                      className="bg-stone-100 hover:bg-emerald-100 text-stone-600 hover:text-emerald-700 p-2 rounded-lg transition-colors"
-                    >
-                      <Edit2 size={18}/>
-                    </button>
+
+                    <h3 className="font-bold text-stone-800 text-lg mb-1">{item.name}</h3>
+                    <p className="text-xs text-stone-500 mb-4 bg-stone-50 inline-block px-2 py-1 rounded-lg border border-stone-100">
+                      Costo Base: <strong>Bs {(item.unit_cost ?? 0).toFixed(5)}</strong> / {item.unit_measure}
+                    </p>
+
+                    <div className="flex justify-between items-end border-t border-stone-100 pt-4">
+                      <div>
+                        <p className="text-[10px] text-stone-400 uppercase font-bold tracking-wider">En Stock</p>
+                        <p className={`text-2xl font-mono font-bold ${isLow ? 'text-amber-600' : 'text-stone-700'}`}>
+                          {stock.toLocaleString()} <span className="text-sm font-sans font-normal text-stone-400">{item.unit_measure}</span>
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                          <button onClick={() => abrirModalEditar(item)} className="p-2 text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                              <Edit2 size={18}/>
+                          </button>
+                          <button onClick={() => { if(confirm('¿Eliminar?')) eliminarInsumo(item.id).then(cargarDatos) }} className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                              <Trash2 size={18}/>
+                          </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
             })}
-            
-            {filtrados.length === 0 && (
-              <div className="col-span-full text-center py-10 text-stone-400 border-2 border-dashed border-stone-200 rounded-xl">
-                No hay insumos registrados.
-              </div>
-            )}
           </div>
         )}
       </div>
 
-      {/* --- MODAL CREAR --- */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in-95">
-            <h3 className="font-bold text-lg text-stone-800 mb-4">Nuevo Insumo</h3>
-            <div className="space-y-4">
-              <input className="w-full p-2 border rounded-lg" placeholder="Nombre (Ej: Leche Entera)" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})}/>
-              <div className="grid grid-cols-2 gap-3">
-                <select className="w-full p-2 border rounded-lg bg-white" value={newItem.unit_measure} onChange={e=>setNewItem({...newItem, unit_measure: e.target.value})}>
-                  <option value="unidades">Unidades</option>
-                  <option value="litros">Litros</option>
-                  <option value="kg">Kilogramos</option>
-                  <option value="gramos">Gramos</option>
-                  <option value="ml">Mililitros</option>
-                </select>
-                <input type="number" className="w-full p-2 border rounded-lg" placeholder="Stock Inicial" value={newItem.current_stock} onChange={e=>setNewItem({...newItem, current_stock: e.target.value})}/>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" className="w-full p-2 border rounded-lg" placeholder="Costo Unitario" value={newItem.unit_cost} onChange={e=>setNewItem({...newItem, unit_cost: e.target.value})}/>
-                <input type="number" className="w-full p-2 border rounded-lg" placeholder="Alerta Mínima" value={newItem.low_stock_threshold} onChange={e=>setNewItem({...newItem, low_stock_threshold: e.target.value})}/>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowCreate(false)} className="flex-1 py-2 text-stone-500 font-bold">Cancelar</button>
-              <button onClick={handleCrear} className="flex-1 py-2 bg-stone-900 text-white rounded-lg font-bold">Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL AJUSTAR STOCK --- */}
-      {editingItem && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-stone-800">Ajustar Inventario</h3>
-              <button onClick={() => setEditingItem(null)}><X size={20} className="text-stone-400"/></button>
-            </div>
+      {/* --- MODAL REDISEÑADO --- */}
+      {showModal && (
+        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-stone-50 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col md:flex-row max-h-[90vh]">
             
-            <div className="bg-stone-50 p-3 rounded-lg mb-4 text-center">
-              <p className="text-sm text-stone-500">{editingItem.name}</p>
-              {/* CORRECCIÓN 5: Visualización en modal */}
-              <p className="text-2xl font-bold text-stone-800">{editingItem.current_stock ?? 0} <span className="text-sm font-normal">{editingItem.unit_measure}</span></p>
+            {/* LADO IZQUIERDO: DATOS DEL INSUMO */}
+            <div className="w-full md:w-1/3 bg-white p-8 border-r border-stone-200 overflow-y-auto">
+                <h3 className="font-bold text-lg text-stone-800 mb-1 flex items-center gap-2">
+                    <Package className="text-emerald-600"/> Insumo
+                </h3>
+                <p className="text-xs text-stone-400 mb-6">Información básica del producto.</p>
+                
+                <div className="space-y-5">
+                    <div>
+                        <label className="text-xs font-bold text-stone-500 uppercase block mb-1">Nombre del Insumo</label>
+                        <input className="w-full p-3 border border-stone-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-stone-50 focus:bg-white transition-all" 
+                            placeholder="Ej: Leche Entera" autoFocus
+                            value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-stone-500 uppercase block mb-1">Unidad de Medida (Receta)</label>
+                        <select className="w-full p-3 border border-stone-200 rounded-xl outline-none bg-stone-50 focus:bg-white"
+                            value={form.unit_measure} onChange={e => setForm({...form, unit_measure: e.target.value})}>
+                            <option value="ml">Mililitros (ml)</option>
+                            <option value="g">Gramos (g)</option>
+                            <option value="kg">Kilogramos (kg)</option>
+                            <option value="lt">Litros (l)</option>
+                            <option value="und">Unidades (und)</option>
+                        </select>
+                        <p className="text-[10px] text-stone-400 mt-1 leading-tight">Define cómo se descontará este insumo en las recetas.</p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-stone-500 uppercase block mb-1">Stock Mínimo (Alerta)</label>
+                        <input type="number" className="w-full p-3 border border-stone-200 rounded-xl outline-none bg-stone-50 focus:bg-white" 
+                            value={form.low_stock_threshold} onChange={e => setForm({...form, low_stock_threshold: Number(e.target.value)})} />
+                    </div>
+
+                    {modoEdicion && (
+                        <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                            <p className="text-xs text-emerald-800 font-bold uppercase mb-1">Stock Actual en Sistema</p>
+                            <p className="text-2xl font-mono text-emerald-700 font-bold">{stockActualBD.toLocaleString()} <span className="text-sm">{form.unit_measure}</span></p>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-stone-400 uppercase">Nuevo Stock Real</label>
-                <input 
-                  type="number" 
-                  autoFocus
-                  className="w-full p-3 border-2 border-emerald-100 rounded-xl text-center text-xl font-bold outline-none focus:border-emerald-500" 
-                  // CORRECCIÓN 6: Input value con fallback a '' (string vacío) si es null
-                  value={editingItem.current_stock ?? ''} 
-                  onChange={e => setEditingItem({...editingItem, current_stock: parseFloat(e.target.value) || 0})}
-                />
-              </div>
-              
-              <div>
-                <label className="text-xs font-bold text-stone-400 uppercase">Costo Unitario Actualizado</label>
-                <input 
-                  type="number" 
-                  className="w-full p-2 border rounded-lg text-center" 
-                  // CORRECCIÓN 7: Input value con fallback
-                  value={editingItem.unit_cost ?? ''} 
-                  onChange={e => setEditingItem({...editingItem, unit_cost: parseFloat(e.target.value) || 0})}
-                />
-              </div>
-            </div>
+            {/* LADO DERECHO: CALCULADORA DE COMPRA */}
+            <div className="flex-1 p-8 bg-stone-50 overflow-y-auto">
+                <div className="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 className="font-bold text-lg text-stone-800 flex items-center gap-2">
+                            <Calculator className="text-stone-600"/> Registrar Compra
+                        </h3>
+                        <p className="text-xs text-stone-400">Calcula el costo real y actualiza inventario.</p>
+                    </div>
+                    <button onClick={() => setShowModal(false)} className="p-2 hover:bg-stone-200 rounded-full text-stone-400 transition-colors"><X size={20}/></button>
+                </div>
 
-            <div className="flex gap-3 mt-6">
-               <button 
-                onClick={() => { if(confirm('¿Eliminar insumo?')) eliminarInsumo(editingItem.id).then(()=>{toast.success('Eliminado'); setEditingItem(null); cargarDatos();}) }}
-                className="p-3 text-red-400 hover:bg-red-50 rounded-lg"
-              >
-                <Trash2 size={20}/>
-              </button>
-              <button onClick={handleUpdateStock} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 flex justify-center items-center gap-2">
-                <RefreshCw size={18}/> Actualizar
-              </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Tarjeta de Entrada */}
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 space-y-4">
+                        <div className="flex items-center gap-2 text-stone-800 font-bold text-sm border-b border-stone-100 pb-2">
+                           <span className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-xs">1</span> Datos de Compra
+                        </div>
+                        
+                        <div>
+                           <label className="text-[10px] font-bold text-stone-400 uppercase">Fecha Compra</label>
+                           <div className="relative">
+                             <Calendar className="absolute left-3 top-2.5 text-stone-400" size={14}/>
+                             <input type="date" className="w-full pl-9 p-2 border rounded-lg text-sm bg-stone-50 outline-none"
+                               value={form.fecha_compra} onChange={e => setForm({...form, fecha_compra: e.target.value})} />
+                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-[10px] font-bold text-stone-400 uppercase">Presentación</label>
+                                <input className="w-full p-2 border rounded-lg text-sm bg-stone-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500" placeholder="Ej: Caja" 
+                                    value={form.presentacion_nombre} onChange={e => setForm({...form, presentacion_nombre: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-stone-400 uppercase">Cant. Comprada</label>
+                                <input type="number" className="w-full p-2 border rounded-lg text-sm bg-stone-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500" placeholder="0" 
+                                    value={form.cantidad_comprada} onChange={e => setForm({...form, cantidad_comprada: Number(e.target.value)})} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                             <div>
+                                <label className="text-[10px] font-bold text-stone-400 uppercase">Contenido ({form.unit_measure})</label>
+                                <input type="number" className="w-full p-2 border rounded-lg text-sm bg-stone-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500" placeholder="Ej: 1000" 
+                                    value={form.contenido_neto} onChange={e => setForm({...form, contenido_neto: Number(e.target.value)})} />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-bold text-stone-400 uppercase">Costo Presentación</label>
+                                <div className="relative">
+                                    <span className="absolute left-2 top-2 text-stone-400 text-xs font-bold">Bs</span>
+                                    <input type="number" className="w-full pl-6 p-2 border rounded-lg text-sm bg-stone-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500" placeholder="0.00" 
+                                        value={form.costo_presentacion} onChange={e => setForm({...form, costo_presentacion: Number(e.target.value)})} />
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    {/* Tarjeta de Salida (Calculado) */}
+                    <div className="bg-stone-800 text-stone-200 p-5 rounded-2xl shadow-lg flex flex-col justify-between">
+                         <div>
+                            <div className="flex items-center gap-2 text-white font-bold text-sm border-b border-stone-600 pb-2 mb-4">
+                                <span className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs">2</span> Resultado
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-stone-400">Stock a Agregar</span>
+                                    <span className="text-xl font-mono font-bold text-white">+{form.stock_calculado.toLocaleString()} <span className="text-xs text-stone-400">{form.unit_measure}</span></span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-stone-400">Costo Unit. Real</span>
+                                    <span className="text-xl font-mono font-bold text-emerald-400">Bs {form.costo_unitario_calculado.toFixed(5)}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-stone-600">
+                                    <span className="text-xs text-stone-400">Gasto Total</span>
+                                    <span className="text-lg font-bold text-white">Bs {(form.cantidad_comprada * form.costo_presentacion).toFixed(2)}</span>
+                                </div>
+                            </div>
+                         </div>
+                         
+                         <div className="mt-4 pt-4 border-t border-stone-600 text-[10px] text-stone-400 flex items-center gap-2">
+                            <History size={12}/> Se registrará en Historial de Gastos
+                         </div>
+                    </div>
+                </div>
+
+                {/* Footer del Modal */}
+                <div className="flex justify-end gap-3 pt-2">
+                    <button onClick={() => setShowModal(false)} className="px-6 py-3 rounded-xl font-bold text-stone-500 hover:bg-stone-200 transition-colors">
+                        Cancelar
+                    </button>
+                    <button onClick={handleGuardar} disabled={loading} className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xl shadow-emerald-200 transition-all flex items-center gap-2">
+                        {loading ? 'Procesando...' : <>{modoEdicion ? 'Actualizar Stock' : 'Guardar Insumo'} <ArrowRight size={18}/></>}
+                    </button>
+                </div>
+
             </div>
           </div>
         </div>

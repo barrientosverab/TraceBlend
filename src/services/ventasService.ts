@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { Database } from '../types/supabase';
 
+// Definimos los tipos para TypeScript
 type ProductRow = Database['public']['Tables']['products']['Row'];
 type ClientInsert = Database['public']['Tables']['clients']['Insert'];
 
@@ -8,11 +9,11 @@ export interface ItemCarrito {
   id: string;
   tipo: 'PRODUCTO' | 'VERDE';
   cantidad: number;
-  precio_venta: number; // Precio base
-  precio_final: number; // Precio con descuento
+  precio_venta: number; 
+  precio_final: number; 
   nombre?: string;
-  es_cortesia?: boolean; // <--- NUEVO
-  descuento?: number;    // <--- NUEVO
+  es_cortesia?: boolean;
+  descuento?: number;
 }
 
 export interface DatosVenta {
@@ -20,10 +21,9 @@ export interface DatosVenta {
   carrito: ItemCarrito[];
   total: number;
   metodoPago: string;
-  tipoPedido: 'dine_in' | 'takeaway'; // <--- NUEVO: Soluciona tu línea roja
+  tipoPedido: 'dine_in' | 'takeaway';
 }
 
-// ... (Interfaces de cliente se mantienen igual) ...
 export interface ClienteForm {
   razon_social: string;
   nit: string;
@@ -55,37 +55,67 @@ export const crearCliente = async (cliente: ClienteForm, orgId: string) => {
 };
 
 export const getCatalogoVentas = async () => {
+  const hoy = new Date().toISOString();
   const { data: productos, error } = await supabase
     .from('products')
-    .select(`id, name, sku, sale_price, category, package_weight_grams, is_roasted, finished_inventory ( current_stock )`)
-    .eq('is_active', true);
+    .select(`
+      id, name, sku, sale_price, category, package_weight_grams, is_roasted,
+      finished_inventory ( current_stock ),
+      product_promotions (
+        id, name, discount_percent, is_courtesy, start_date, end_date
+      )
+    `)
+    .eq('is_active', true)
+    .filter('product_promotions.is_active', 'eq', true)
+    .filter('product_promotions.end_date', 'gte', hoy)
+    .filter('product_promotions.start_date', 'lte', hoy);
 
   if (error) throw error;
 
-  return (productos || []).map((p: any) => ({
-    id: p.id,
-    tipo: 'PRODUCTO',
-    nombre: p.name,
-    category: p.category,
-    detalle: p.is_roasted ? `SKU: ${p.sku}` : `GRANEL`,
-    precio: p.sale_price,
-    stock: p.finished_inventory?.[0]?.current_stock || 0,
-    unidad: 'und'
-  }));
+  return (productos || []).map((p: any) => {
+    const promocionesActivas = p.product_promotions || [];
+    const mejorPromo = promocionesActivas.sort((a: any, b: any) => {
+        const descA = a.is_courtesy ? 100 : a.discount_percent;
+        const descB = b.is_courtesy ? 100 : b.discount_percent;
+        return descB - descA;
+    })[0];
+
+    return {
+      id: p.id,
+      tipo: 'PRODUCTO',
+      nombre: p.name,
+      category: p.category,
+      detalle: p.is_roasted ? `SKU: ${p.sku}` : `GRANEL`,
+      precio: p.sale_price,
+      stock: p.finished_inventory?.[0]?.current_stock || 0,
+      unidad: 'und',
+      promo_activa: mejorPromo ? {
+        nombre: mejorPromo.name,
+        descuento: mejorPromo.is_courtesy ? 0 : mejorPromo.discount_percent,
+        es_cortesia: mejorPromo.is_courtesy
+      } : null
+    };
+  });
 };
 
-export const registrarVenta = async (datosVenta: DatosVenta, orgId: string, userId: string) => {
-  // Preparamos el payload
+// --- FUNCIÓN CLAVE ACTUALIZADA ---
+export const registrarVenta = async (
+    datosVenta: DatosVenta, 
+    orgId: string, 
+    userId: string, 
+    // Nuevo parámetro: por defecto es 'completed', pero puede ser 'pending'
+    status: 'completed' | 'pending' = 'completed' 
+) => {
+  // Preparamos los items para enviarlos al SQL
   const itemsPayload = datosVenta.carrito.map(item => ({
     product_id: item.tipo === 'PRODUCTO' ? item.id : null,
-    green_inventory_id: item.tipo !== 'PRODUCTO' ? item.id : null,
     cantidad: Number(item.cantidad),
-    unit_price: Number(item.precio_final), // Usamos precio final (con descuento)
+    unit_price: Number(item.precio_final),
     is_courtesy: item.es_cortesia || false,
     discount_val: item.descuento || 0
   }));
 
-  // Llamada a RPC actualizada
+  // Llamamos a la función SQL que actualizamos en el paso anterior
   const { data, error } = await supabase.rpc('registrar_venta_transaccion', {
     p_org_id: orgId,
     p_client_id: datosVenta.cliente_id,
@@ -93,12 +123,32 @@ export const registrarVenta = async (datosVenta: DatosVenta, orgId: string, user
     p_total: datosVenta.total,
     p_items: itemsPayload as any,
     p_payment_method: datosVenta.metodoPago,
-    p_order_type: datosVenta.tipoPedido // <--- Pasamos el dato a la BD
+    p_order_type: datosVenta.tipoPedido,
+    p_status: status // <--- Aquí pasamos el estado
   });
 
   if (error) {
-    if (error.message.includes('check_stock')) throw new Error("⛔ STOCK INSUFICIENTE: Verifique inventario.");
+    // Traducimos el error de SQL a algo legible para el usuario
+    if (error.message.includes('Stock insuficiente')) throw new Error(error.message);
     throw error;
   }
   return data;
+};
+
+// --- NUEVA FUNCIÓN: RECUPERAR PENDIENTES ---
+export const getPedidosPendientes = async (orgId: string) => {
+    const { data, error } = await supabase
+        .from('sales_orders')
+        .select('id, total_amount, order_date, clients(business_name)')
+        .eq('organization_id', orgId)
+        .eq('status', 'pending') // Solo traemos los pendientes
+        .order('order_date', { ascending: false });
+    
+    if (error) throw error;
+    
+    // Simplificamos la respuesta para la vista
+    return data.map((d: any) => ({
+        ...d,
+        client_name: d.clients?.business_name || 'Cliente Casual'
+    }));
 };
