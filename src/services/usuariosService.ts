@@ -1,14 +1,9 @@
 // src/services/usuariosService.ts
 import { supabase } from './supabaseClient';
-import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
 
-// 1. Definimos el tipo de Rol basado en tu BD
+// Definimos el tipo de Rol basado en la BD
 type UserRole = Database['public']['Tables']['profiles']['Insert']['role'];
-
-// Cliente temporal para invitaciones (sin sesión persistente)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const getUsuarios = async (orgId: string) => {
   const { data, error } = await supabase
@@ -25,7 +20,7 @@ export const actualizarRol = async (userId: string, nuevoRol: string) => {
   const { data, error } = await supabase
     .from('profiles')
     // 2. Aquí también hacemos el casting para asegurar que 'nuevoRol' es válido
-    .update({ role: nuevoRol as UserRole }) 
+    .update({ role: nuevoRol as UserRole })
     .eq('id', userId)
     .select()
     .single();
@@ -41,38 +36,52 @@ export interface InvitacionData {
 }
 
 export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
-  const tempClient = createClient<Database>(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false }
-  });
-
+  // Generar contraseña temporal
   const tempPassword = `Trace${Math.floor(1000 + Math.random() * 9000)}!`;
 
-  // 3. Creamos el usuario
-  const { data: authData, error: authError } = await tempClient.auth.signUp({
-    email: datos.email,
-    password: tempPassword,
-    options: {
-      data: {
+  try {
+    // PASO 1: Crear el usuario con Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: datos.email,
+      password: tempPassword,
+      email_confirm: true, // Auto-confirmar email para usuarios invitados
+      user_metadata: {
         first_name: datos.nombre,
-        organization_id: orgId,
-        role: datos.rol as UserRole 
+        last_name: '',
+        role: datos.rol
       }
-    }
-  });
+    });
 
-  if (authError) throw authError;
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('No se pudo crear el usuario');
 
-  if (authData.user) {
-    // 4. Actualizamos perfil (mismo fix aquí)
-    await supabase
+    // PASO 2: Crear/actualizar el perfil con organization_id
+    // Usar upsert para asegurar que se cree o actualice el perfil
+    const { error: profileError } = await supabase
       .from('profiles')
-      .update({ 
-        role: datos.rol as UserRole, // <--- Casting aquí también
+      .upsert({
+        id: authData.user.id,
+        email: datos.email,
         first_name: datos.nombre,
-        organization_id: orgId 
-      })
-      .eq('id', authData.user.id);
-    
+        last_name: '',
+        role: datos.rol as UserRole,
+        organization_id: orgId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+
+    if (profileError) {
+      console.error('Error creating profile:', profileError);
+      throw new Error(`Error al crear perfil: ${profileError.message}`);
+    }
+
+    console.log(`Usuario ${datos.email} invitado exitosamente a org ${orgId}`);
+
     return { user: authData.user, tempPassword };
+  } catch (error: any) {
+    console.error('Error en invitarUsuario:', error);
+    throw error;
   }
 };

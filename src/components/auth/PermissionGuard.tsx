@@ -73,15 +73,25 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
 
                 {/* Contenido */}
                 <div className="p-8">
-                    {/* Plan actual */}
+                    {/* Plan actual o Trial Info */}
                     {subscription?.plan_name && (
-                        <div className="mb-6 p-4 bg-stone-100 rounded-xl border border-stone-200">
+                        <div className={`mb-6 p-4 rounded-xl border ${subscription.plan_code === 'trial' && !subscription.is_trial_active
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-stone-100 border-stone-200'
+                            }`}>
                             <p className="text-xs text-stone-500 uppercase tracking-wider font-bold mb-1">
-                                Tu plan actual
+                                {subscription.plan_code === 'trial' && !subscription.is_trial_active
+                                    ? 'Tu prueba gratuita ha finalizado'
+                                    : 'Tu plan actual'}
                             </p>
                             <p className="text-lg font-bold text-stone-800">
                                 {subscription.plan_name}
                             </p>
+                            {subscription.plan_code === 'trial' && !subscription.is_trial_active && (
+                                <p className="text-sm text-red-700 mt-1">
+                                    Para seguir usando TraceBlend, actualiza a un plan de pago
+                                </p>
+                            )}
                         </div>
                     )}
 

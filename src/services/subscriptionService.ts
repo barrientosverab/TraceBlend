@@ -24,6 +24,8 @@ export interface OrganizationSubscription {
     plan_code: string | null;
     monthly_price: number | null;
     max_users: number | null;
+    trial_ends_at: string | null;
+    is_trial_active: boolean;
     available_features: string[];
 }
 
@@ -147,7 +149,17 @@ export async function hasFeatureAccess(
     try {
         const subscription = await getOrganizationSubscription(organizationId);
 
-        if (!subscription || !subscription.available_features) {
+        if (!subscription) {
+            return false;
+        }
+
+        // Si está en período de trial activo, tiene acceso a todo
+        if (subscription.is_trial_active) {
+            return true;
+        }
+
+        // Si tiene features disponibles, verificar acceso específico
+        if (!subscription.available_features || subscription.available_features.length === 0) {
             return false;
         }
 
