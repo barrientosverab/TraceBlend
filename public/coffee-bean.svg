@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Grano de café verde -->
+  <defs>
+    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6DBE45;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#5BA839;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A8F2F;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cuerpo del grano -->
+  <ellipse cx="50" cy="50" rx="35" ry="45" fill="url(#greenGradient)" stroke="#3D7526" stroke-width="2"/>
+  
+  <!-- Línea central característica del grano -->
+  <path d="M 50 10 Q 45 50 50 90" fill="none" stroke="#3D7526" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Sombra/profundidad en la línea -->
+  <path d="M 50 10 Q 48 50 50 90" fill="none" stroke="#2D5A1A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+</svg>
