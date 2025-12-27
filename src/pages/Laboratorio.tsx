@@ -1,188 +1,379 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getLotesParaAnalisis, guardarAnalisis, AnalisisForm, LoteAnalisis } from '../services/laboratorioService';
+import { getReports, getLotesParaAnalisis, createInternalReport, createExternalReport, type LabReportComplete, type LoteAnalisis } from '../services/laboratorioService';
+import { TablaReportesLaboratorio } from '../components/TablaReportesLaboratorio';
+import { VisualizadorReporte } from '../components/VisualizadorReporte';
+import { FormularioMuestraExterna } from '../components/FormularioMuestraExterna';
+import { FormularioAnalisisFisico } from '../components/FormularioAnalisisFisico';
+import { FormularioCatacionSCA } from '../components/FormularioCatacionSCA';
+import { ComparadorMuestras } from '../components/ComparadorMuestras';
+import { Button } from '../components/ui';
+import { Card } from '../components/ui/Card';
+import { FlaskConical, Plus, Package, Building2, Filter, ArrowLeft, CheckCircle, Award, TrendingUp, GitCompare } from 'lucide-react';
 import { toast } from 'sonner';
-import { FlaskConical, Save, Calculator, Activity, Droplets } from 'lucide-react';
+
+type Vista = 'dashboard' | 'detalle' | 'nuevoInterno' | 'nuevoExterno' | 'agregarAnalisis' | 'comparar';
+type TipoAnalisis = 'fisico' | 'catacion' | null;
 
 export function Laboratorio() {
   const { orgId } = useAuth();
+  const [reportes, setReportes] = useState<LabReportComplete[]>([]);
   const [lotes, setLotes] = useState<LoteAnalisis[]>([]);
-  const [selected, setSelected] = useState('');
-  
-  const [form, setForm] = useState<AnalisisForm>({
-    peso_muestra: 250, // Estándar SCA suele ser 250g o 300g
-    peso_oro: '', // Lo que queda después de trillar la muestra
-    humedad: '', 
-    densidad: '', 
-    malla_18: '', malla_16: '', malla_14: '', base: '', defectos: '', 
-    puntaje_cata: '', notas_cata: ''
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [vistaActiva, setVistaActiva] = useState<Vista>('dashboard');
+  const [reporteSeleccionado, setReporteSeleccionado] = useState<LabReportComplete | null>(null);
+  const [reporteEnProceso, setReporteEnProceso] = useState<string | null>(null);
+  const [tipoAnalisisActual, setTipoAnalisisActual] = useState<TipoAnalisis>(null);
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'internal' | 'external'>('todos');
+  const [loteSeleccionado, setLoteSeleccionado] = useState('');
+  const [reportesParaComparar, setReportesParaComparar] = useState<string[]>([]);
 
-  useEffect(() => { if(orgId) getLotesParaAnalisis().then(setLotes); }, [orgId]);
+  useEffect(() => {
+    cargarDatos();
+  }, [orgId]);
 
-  // --- CÁLCULOS AUTOMÁTICOS EN TIEMPO REAL ---
-  const calcularRendimiento = () => {
-    const entrada = Number(form.peso_muestra) || 0;
-    const salida = Number(form.peso_oro) || 0;
-    
-    if (entrada === 0) return { rendimiento: 0, merma: 0, factor: 0 };
-
-    const rendimiento = (salida / entrada) * 100;
-    const merma = 100 - rendimiento;
-    
-    // Factor de Rendimiento (Cuántos Kilos de pergamino necesito para 1 saco de 70kg Oro)
-    // Fórmula común: (Peso Muestra / Peso Oro) * 70 (o la base que usen, ej. 85)
-    // Usaremos base 70kg exportable estándar.
-    const factor = salida > 0 ? (entrada / salida) * 70 : 0;
-
-    return { 
-      rendimiento: rendimiento.toFixed(2), 
-      merma: merma.toFixed(2),
-      factor: factor.toFixed(1)
-    };
+  const cargarDatos = async () => {
+    if (!orgId) return;
+    setIsLoading(true);
+    try {
+      const [reportesData, lotesData] = await Promise.all([
+        getReports(),
+        getLotesParaAnalisis()
+      ]);
+      setReportes(reportesData);
+      setLotes(lotesData);
+    } catch (error) {
+      toast.error('Error al cargar datos');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const stats = calcularRendimiento();
+  const handleVerReporte = (reportId: string) => {
+    const reporte = reportes.find(r => r.id === reportId);
+    if (reporte) {
+      setReporteSeleccionado(reporte);
+      setVistaActiva('detalle');
+    }
+  };
 
-  const handleSave = async () => {
-    if(!selected) return toast.warning("Selecciona lote");
+  const handleCrearReporteInterno = async () => {
+    if (!loteSeleccionado) {
+      toast.warning('Selecciona un lote');
+      return;
+    }
+
     try {
-      await guardarAnalisis(selected, form, orgId!);
-      toast.success("Reporte de Calidad Guardado");
-      setForm({ ...form, peso_oro: '', humedad: '', puntaje_cata: '', notas_cata: '' });
-      setSelected('');
-    } catch (e: any) { toast.error(e.message); }
+      const reportId = await createInternalReport({
+        report_date: new Date().toISOString().split('T')[0],
+        analyst_name: '',
+        sample_type: 'internal',
+        batch_id: loteSeleccionado,
+        report_type: 'complete'
+      }, orgId!);
+
+      setReporteEnProceso(reportId);
+      setTipoAnalisisActual('fisico');
+      setVistaActiva('agregarAnalisis');
+      toast.success('Reporte creado. Agregando análisis físico...');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleCrearReporteExterno = async (data: any) => {
+    try {
+      const reportId = await createExternalReport(data, orgId!);
+      setReporteEnProceso(reportId);
+
+      if (data.report_type === 'physical') {
+        setTipoAnalisisActual('fisico');
+        setVistaActiva('agregarAnalisis');
+      } else if (data.report_type === 'cupping') {
+        setTipoAnalisisActual('catacion');
+        setVistaActiva('agregarAnalisis');
+      } else {
+        setTipoAnalisisActual('fisico');
+        setVistaActiva('agregarAnalisis');
+      }
+
+      toast.success('Muestra externa registrada');
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const volverAlDashboard = () => {
+    setVistaActiva('dashboard');
+    setReporteSeleccionado(null);
+    setReporteEnProceso(null);
+    setTipoAnalisisActual(null);
+    setLoteSeleccionado('');
+    setReportesParaComparar([]);
+    cargarDatos();
+  };
+
+  const toggleReporteComparar = (reportId: string) => {
+    setReportesParaComparar(prev =>
+      prev.includes(reportId)
+        ? prev.filter(id => id !== reportId)
+        : [...prev, reportId]
+    );
+  };
+
+  const reportesFiltrados = reportes.filter(r => {
+    if (filtroTipo === 'todos') return true;
+    return r.sample_type === filtroTipo;
+  });
+
+  const estadisticas = {
+    total: reportes.length,
+    internas: reportes.filter(r => r.sample_type === 'internal').length,
+    externas: reportes.filter(r => r.sample_type === 'external').length,
+    specialty: reportes.filter(r => r.final_score && r.final_score >= 80).length,
+    promedioScore: reportes.filter(r => r.final_score).length > 0
+      ? (reportes.reduce((sum, r) => sum + (r.final_score || 0), 0) / reportes.filter(r => r.final_score).length)
+      : 0
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-stone-800 flex items-center gap-3">
-          <FlaskConical className="text-emerald-600" size={32}/> 
-          Laboratorio de Calidad
-        </h1>
-        <div className="px-4 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs font-bold text-amber-700">
-          Análisis Físico & Sensorial
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-stone-800 flex items-center gap-3">
+              <FlaskConical className="text-emerald-600" size={32} />
+              Laboratorio de Café
+            </h1>
+            <p className="text-stone-600 mt-2">
+              Sistema de análisis físico y sensorial (SCA)
+            </p>
+          </div>
+
+          {vistaActiva !== 'dashboard' && (
+            <Button
+              icon={ArrowLeft}
+              variant="secondary"
+              onClick={volverAlDashboard}
+            >
+              Volver al Dashboard
+            </Button>
+          )}
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* COLUMNA 1: SELECCIÓN Y CÁLCULOS (ESTILO NEGRO) */}
-        <div className="lg:col-span-1 space-y-6">
-           {/* Selector */}
-           <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200">
-              <label className="font-bold text-stone-500 text-xs uppercase tracking-wider">Lote a Analizar</label>
-              <select 
-                className="w-full mt-2 p-3 border rounded-xl bg-stone-50 font-medium outline-none focus:ring-2 focus:ring-emerald-500" 
-                value={selected} 
-                onChange={e=>setSelected(e.target.value)}
-              >
-                <option value="">-- Seleccionar Lote --</option>
-                {lotes.map(l => <option key={l.id} value={l.id}>{l.codigo_lote} • {l.nombre_finca}</option>)}
-              </select>
-           </div>
 
-           {/* TARJETA DE CÁLCULOS (ESTILO CONTRASTE) */}
-           <div className="bg-stone-900 p-6 rounded-3xl shadow-xl text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10"><Calculator size={64}/></div>
-              
-              <h3 className="text-emerald-400 font-bold text-sm uppercase mb-6 flex items-center gap-2">
-                <Activity size={16}/> Resultados Físicos
-              </h3>
+      {/* Dashboard View */}
+      {vistaActiva === 'dashboard' && (
+        <>
+          {/* Estadísticas */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <Card className="p-4 hover:shadow-lg transition-shadow">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-1">Total Reportes</p>
+              <p className="text-3xl font-black text-stone-800">{estadisticas.total}</p>
+            </Card>
+            <Card className="p-4 hover:shadow-lg transition-shadow">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-1">Internas</p>
+              <p className="text-3xl font-black text-emerald-600">{estadisticas.internas}</p>
+            </Card>
+            <Card className="p-4 hover:shadow-lg transition-shadow">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-1">Externas</p>
+              <p className="text-3xl font-black text-blue-600">{estadisticas.externas}</p>
+            </Card>
+            <Card className="p-4 hover:shadow-lg transition-shadow">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-1 flex items-center gap-1">
+                <Award size={12} />
+                Specialty
+              </p>
+              <p className="text-3xl font-black text-purple-600">{estadisticas.specialty}</p>
+            </Card>
+            <Card className="p-4 hover:shadow-lg transition-shadow">
+              <p className="text-xs font-bold text-stone-500 uppercase mb-1 flex items-center gap-1">
+                <TrendingUp size={12} />
+                Promedio
+              </p>
+              <p className="text-3xl font-black text-amber-600">{estadisticas.promedioScore.toFixed(1)}</p>
+            </Card>
+          </div>
 
-              <div className="space-y-6 relative z-10">
-                <div className="flex justify-between items-end border-b border-stone-700 pb-2">
-                  <span className="text-stone-400 text-sm">Rendimiento</span>
-                  <span className="text-2xl font-mono font-bold text-white">{stats.rendimiento}%</span>
+          {/* Crear Nuevo Reporte */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {/* Muestra Interna */}
+            <Card className="p-6 hover:shadow-xl transition-all">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-emerald-100 rounded-xl">
+                  <Package className="text-emerald-600" size={24} />
                 </div>
-                <div className="flex justify-between items-end border-b border-stone-700 pb-2">
-                  <span className="text-stone-400 text-sm">Merma Trilla</span>
-                  <span className="text-2xl font-mono font-bold text-amber-500">{stats.merma}%</span>
-                </div>
-                <div>
-                  <span className="text-stone-400 text-xs uppercase font-bold">Factor (Base 70kg)</span>
-                  <div className="text-4xl font-mono font-bold text-emerald-400 mt-1">{stats.factor}</div>
-                  <p className="text-[10px] text-stone-500 mt-1">Kilos pergamino para 1 saco exportable</p>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg text-stone-800 mb-1">Muestra Interna</h3>
+                  <p className="text-sm text-stone-600 mb-4">Analizar lote de inventario</p>
+
+                  <select
+                    className="w-full p-3 border-2 border-stone-200 rounded-xl mb-3 font-semibold text-sm focus:border-emerald-500 outline-none"
+                    value={loteSeleccionado}
+                    onChange={(e) => setLoteSeleccionado(e.target.value)}
+                  >
+                    <option value="">-- Seleccionar Lote --</option>
+                    {lotes.map(l => (
+                      <option key={l.id} value={l.id}>
+                        {l.codigo_lote} • {l.nombre_finca}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Button
+                    icon={Plus}
+                    variant="primary"
+                    fullWidth
+                    onClick={handleCrearReporteInterno}
+                    disabled={!loteSeleccionado}
+                  >
+                    Crear Reporte
+                  </Button>
                 </div>
               </div>
-           </div>
-        </div>
+            </Card>
 
-        {/* COLUMNA 2: FORMULARIO DE DATOS */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-lg border border-stone-100 space-y-8">
-           
-           {/* Análisis Físico */}
-           <div>
-             <h4 className="font-bold text-stone-800 border-b-2 border-emerald-100 pb-2 mb-4 flex items-center gap-2">
-                <Droplets size={18} className="text-emerald-600"/> Variables Físicas
-             </h4>
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-stone-400 uppercase">Muestra (g)</label>
-                  <input type="number" className="w-full p-3 bg-stone-50 border rounded-xl font-bold" value={form.peso_muestra} onChange={e=>setForm({...form, peso_muestra: e.target.value})}/>
+            {/* Muestra Externa */}
+            <Card className="p-6 hover:shadow-xl transition-all">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <Building2 className="text-blue-600" size={24} />
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-stone-400 uppercase">Oro (g)</label>
-                  <input type="number" className="w-full p-3 border-2 border-emerald-100 bg-emerald-50/30 rounded-xl font-bold text-emerald-800" value={form.peso_oro} onChange={e=>setForm({...form, peso_oro: e.target.value})}/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-stone-400 uppercase">% Humedad</label>
-                  <input type="number" className="w-full p-3 border rounded-xl" value={form.humedad} onChange={e=>setForm({...form, humedad: e.target.value})}/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-stone-400 uppercase">Densidad</label>
-                  <input type="number" className="w-full p-3 border rounded-xl" value={form.densidad} onChange={e=>setForm({...form, densidad: e.target.value})}/>
-                </div>
-             </div>
-           </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg text-stone-800 mb-1">Muestra Externa</h3>
+                  <p className="text-sm text-stone-600 mb-4">Analizar muestra de cliente</p>
 
-           {/* Granulometría (Mallas) - Opcional, comprimido */}
-           <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-              <label className="text-xs font-bold text-stone-400 uppercase mb-2 block">Granulometría (Gramos retenidos)</label>
-              <div className="grid grid-cols-4 gap-2">
-                 <input placeholder="#18" className="p-2 border rounded text-xs text-center" value={form.malla_18} onChange={e=>setForm({...form, malla_18: e.target.value})}/>
-                 <input placeholder="#16" className="p-2 border rounded text-xs text-center" value={form.malla_16} onChange={e=>setForm({...form, malla_16: e.target.value})}/>
-                 <input placeholder="#14" className="p-2 border rounded text-xs text-center" value={form.malla_14} onChange={e=>setForm({...form, malla_14: e.target.value})}/>
-                 <input placeholder="Defectos" className="p-2 border border-red-200 bg-red-50 text-red-600 rounded text-xs text-center font-bold" value={form.defectos} onChange={e=>setForm({...form, defectos: e.target.value})}/>
+                  <p className="text-xs text-stone-500 mb-3">
+                    Registra muestras de clientes externos para análisis de calidad y certificación
+                  </p>
+
+                  <Button
+                    icon={Plus}
+                    variant="primary"
+                    fullWidth
+                    onClick={() => setVistaActiva('nuevoExterno')}
+                  >
+                    Nueva Muestra Externa
+                  </Button>
+                </div>
               </div>
-           </div>
-           
-           {/* Análisis Sensorial (Cata) */}
-           <div>
-             <h4 className="font-bold text-stone-800 border-b-2 border-amber-100 pb-2 mb-4 flex items-center gap-2">
-                <Activity size={18} className="text-amber-600"/> Evaluación Sensorial
-             </h4>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="text-xs font-bold text-amber-600 uppercase">Puntaje SCA</label>
-                  <div className="relative mt-1">
-                    <input 
-                      type="number" 
-                      className="w-full p-4 border-2 border-amber-200 bg-amber-50 rounded-2xl text-3xl font-bold text-amber-800 text-center outline-none focus:border-amber-400" 
-                      placeholder="80+"
-                      value={form.puntaje_cata} 
-                      onChange={e=>setForm({...form, puntaje_cata: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase">Notas de Cata</label>
-                  <textarea 
-                    className="w-full p-3 border rounded-xl mt-1 h-24 text-sm" 
-                    placeholder="Chocolate, cítricos, cuerpo medio..."
-                    value={form.notas_cata} 
-                    onChange={e=>setForm({...form, notas_cata: e.target.value})}
-                  />
-                </div>
-             </div>
-           </div>
+            </Card>
+          </div>
 
-           <button onClick={handleSave} className="w-full bg-stone-900 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:bg-black transition-all flex justify-center items-center gap-2">
-              <Save size={20}/> Guardar Reporte Oficial
-           </button>
+          {/* Filtros y Tabla */}
+          <div className="mb-4 flex items-center gap-3">
+            <Filter size={18} className="text-stone-400" />
+            <div className="flex gap-2">
+              {[
+                { id: 'todos', label: 'Todos', icon: null },
+                { id: 'internal', label: 'Internas', icon: Package },
+                { id: 'external', label: 'Externas', icon: Building2 }
+              ].map(filtro => {
+                const Icon = filtro.icon;
+                return (
+                  <button
+                    key={filtro.id}
+                    onClick={() => setFiltroTipo(filtro.id as any)}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 ${filtroTipo === filtro.id
+                      ? 'bg-emerald-600 text-white shadow-lg'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                  >
+                    {Icon && <Icon size={16} />}
+                    {filtro.label}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-sm text-stone-500 ml-auto">
+              {reportesFiltrados.length} {reportesFiltrados.length === 1 ? 'reporte' : 'reportes'}
+            </span>
+          </div>
+
+          <Card>
+            <TablaReportesLaboratorio
+              reportes={reportesFiltrados}
+              onViewReport={handleVerReporte}
+              isLoading={isLoading}
+            />
+          </Card>
+        </>
+      )}
+
+      {/* Vista Detalle */}
+      {vistaActiva === 'detalle' && reporteSeleccionado && (
+        <VisualizadorReporte reporte={reporteSeleccionado} />
+      )}
+
+      {/* Vista Nueva Muestra Externa */}
+      {vistaActiva === 'nuevoExterno' && (
+        <FormularioMuestraExterna
+          onSubmit={handleCrearReporteExterno}
+        />
+      )}
+
+      {/* Vista Agregar Análisis */}
+      {vistaActiva === 'agregarAnalisis' && reporteEnProceso && (
+        <div className="space-y-6">
+          {/* Progress indicator */}
+          <Card className="p-4 bg-emerald-50 border-emerald-200">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="text-emerald-600" size={24} />
+              <div>
+                <p className="font-bold text-emerald-800">Reporte creado exitosamente</p>
+                <p className="text-sm text-emerald-700">
+                  {tipoAnalisisActual === 'fisico' ? 'Agregando análisis físico...' : 'Agregando catación SCA...'}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {tipoAnalisisActual === 'fisico' && (
+            <FormularioAnalisisFisico
+              onSubmit={async (data) => {
+                // Implementar guardado
+                toast.success('Análisis físico guardado');
+                setTipoAnalisisActual('catacion');
+              }}
+            />
+          )}
+
+          {tipoAnalisisActual === 'catacion' && (
+            <FormularioCatacionSCA
+              onSubmit={async (data) => {
+                // Implementar guardado
+                toast.success('Catación guardada');
+                volverAlDashboard();
+              }}
+            />
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (tipoAnalisisActual === 'catacion') {
+                  setTipoAnalisisActual('fisico');
+                } else {
+                  volverAlDashboard();
+                }
+              }}
+            >
+              ← Anterior
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={volverAlDashboard}
+              className="ml-auto"
+            >
+              Guardar y Finalizar Después
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

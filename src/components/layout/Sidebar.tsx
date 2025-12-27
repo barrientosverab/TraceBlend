@@ -1,51 +1,52 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  LayoutDashboard, ShoppingBag, Users, Settings, LogOut, 
-  Menu, X, Coffee, Calculator, UserPlus, 
+import { useSubscriptionAccess } from '../../hooks/useSubscriptionAccess';
+import {
+  LayoutDashboard, ShoppingBag, Users, Settings, LogOut,
+  Menu, X, Coffee, Calculator, UserPlus,
   Truck, FlaskConical, Flame, Package, Archive, DollarSign, List, TrendingUp,
   Shield, Percent
 } from 'lucide-react';
 
-const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com"; 
+const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com";
 
 const MENU_GROUPS = [
   {
     title: 'Principal',
     items: [
-      { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['all'] },
-      { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['administrador', 'vendedor'] },
-      { path: '/cierre-caja', icon: Calculator, label: 'Cierre de Caja', roles: ['administrador', 'vendedor'] },
+      { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['all'], feature: 'dashboard' },
+      { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['administrador', 'vendedor'], feature: 'pos' },
+      { path: '/cierre-caja', icon: Calculator, label: 'Cierre de Caja', roles: ['administrador', 'vendedor'], feature: 'cash_close' },
     ]
   },
   {
     title: 'Producción',
     items: [
-      { path: '/recepcion', icon: Truck, label: 'Recepción MP', roles: ['administrador', 'operador'] },
-      { path: '/trilla', icon: Settings, label: 'Trilla', roles: ['administrador', 'operador'] },
-      { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'] },
-      { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio', roles: ['administrador', 'laboratorio'] },
-      { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'] },
+      { path: '/recepcion', icon: Truck, label: 'Recepción MP', roles: ['administrador', 'operador'], feature: 'reception' },
+      { path: '/trilla', icon: Settings, label: 'Trilla', roles: ['administrador', 'operador'], feature: 'milling' },
+      { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'], feature: 'roasting' },
+      { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio', roles: ['administrador', 'laboratorio'], feature: 'laboratory' },
+      { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'], feature: 'packaging' },
     ]
   },
   {
     title: 'Gestión',
     items: [
-      { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'] },
-      { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'] },
-      { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'] },
-      { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'] },
+      { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'], feature: 'finance' },
+      { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'], feature: 'inventory' },
+      { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'], feature: 'catalog' },
+      { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'], feature: 'projections' },
     ]
   },
   {
     title: 'Director',
     items: [
-      { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['administrador'] },
-      { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['administrador', 'vendedor'] },
-      { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'] },
-      { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'] },
-      { icon: Percent, label: 'Promociones', path: '/promociones', roles: ['administrador'] },
+      { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['administrador'], feature: 'team' },
+      { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['administrador', 'vendedor'], feature: 'crm' },
+      { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'], feature: 'suppliers' },
+      { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'], feature: 'reports' },
+      { path: '/promociones', icon: Percent, label: 'Promociones', roles: ['administrador'], feature: 'promotions' },
     ]
   }
 ];
@@ -56,7 +57,22 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const userRole = profile?.role || 'viewer';
 
-  const hasPermission = (roles: string[]) => {
+  // Obtener información de suscripción (sin feature específica)
+  const { subscription } = useSubscriptionAccess();
+  const availableFeatures = new Set(subscription?.available_features || []);
+
+  /**
+   * Verifica si el usuario tiene permiso basado en:
+   * 1. El plan de suscripción de la organización (features disponibles)
+   * 2. El rol del usuario
+   */
+  const hasPermission = (roles: string[], feature?: string) => {
+    // Primero verificar si el plan incluye la feature
+    if (feature && !availableFeatures.has(feature)) {
+      return false; // El plan no incluye esta feature
+    }
+
+    // Luego verificar el rol del usuario
     return roles.includes('all') || roles.includes(userRole);
   };
 
@@ -65,11 +81,11 @@ export function Sidebar() {
 
   return (
     <>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="md:hidden fixed top-4 left-4 z-50 p-2 bg-stone-900 text-white rounded-lg shadow-lg hover:bg-black transition-colors"
       >
-        {isOpen ? <X size={24}/> : <Menu size={24}/>}
+        {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       {isOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => setIsOpen(false)} />}
@@ -80,7 +96,7 @@ export function Sidebar() {
         transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
       `}>
-        
+
         {/* LOGO CORPORATIVO */}
         <div className="p-6 border-b border-stone-800 flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-900/50">
@@ -94,37 +110,37 @@ export function Sidebar() {
 
         {/* NAVEGACIÓN CON SCROLL ESTILIZADO */}
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-8 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-700 hover:scrollbar-thumb-emerald-600 transition-colors">
-          
+
           {/* --- BOTÓN ESPECIAL SUPER ADMIN --- */}
           {isSuperAdmin && (
             <div className="mb-6">
-               <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 px-3 flex items-center gap-1">
-                 <Shield size={10}/> Modo Dios
-               </h3>
-               <ul>
-                 <li>
-                    <Link
-                      to="/super-admin"
-                      onClick={() => setIsOpen(false)}
-                      className={`
+              <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 px-3 flex items-center gap-1">
+                <Shield size={10} /> Modo Dios
+              </h3>
+              <ul>
+                <li>
+                  <Link
+                    to="/super-admin"
+                    onClick={() => setIsOpen(false)}
+                    className={`
                         flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-sm font-bold
-                        ${location.pathname === '/super-admin' 
-                          ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800' 
-                          : 'hover:bg-stone-800 hover:text-white text-emerald-200/70'}
+                        ${location.pathname === '/super-admin'
+                        ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800'
+                        : 'hover:bg-stone-800 hover:text-white text-emerald-200/70'}
                       `}
-                    >
-                      <Shield size={18} />
-                      <span>Panel Maestro</span>
-                    </Link>
-                 </li>
-               </ul>
-               <div className="mx-3 mt-4 border-b border-stone-800"></div>
+                  >
+                    <Shield size={18} />
+                    <span>Panel Maestro</span>
+                  </Link>
+                </li>
+              </ul>
+              <div className="mx-3 mt-4 border-b border-stone-800"></div>
             </div>
           )}
 
           {/* MENÚS NORMALES */}
           {MENU_GROUPS.map((group, groupIdx) => {
-            const visibleItems = group.items.filter(item => hasPermission(item.roles));
+            const visibleItems = group.items.filter(item => hasPermission(item.roles, item.feature));
             if (visibleItems.length === 0) return null;
 
             return (
@@ -142,8 +158,8 @@ export function Sidebar() {
                           onClick={() => setIsOpen(false)}
                           className={`
                             flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-sm font-medium
-                            ${isActive 
-                              ? 'bg-stone-800 text-emerald-400 border-l-2 border-emerald-500' 
+                            ${isActive
+                              ? 'bg-stone-800 text-emerald-400 border-l-2 border-emerald-500'
                               : 'hover:bg-stone-800 hover:text-white border-l-2 border-transparent'}
                           `}
                         >
@@ -170,7 +186,7 @@ export function Sidebar() {
               <p className="text-[10px] text-stone-500 uppercase tracking-wide">{userRole}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={signOut}
             className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-stone-400 hover:bg-stone-800 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-wider"
           >

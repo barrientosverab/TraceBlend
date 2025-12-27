@@ -1,58 +1,238 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getReporteVentas, ReporteItem } from '../services/reportesService';
+import { FiltrosReporte, TipoReporte } from '../components/reportes/FiltrosReporte';
+import { ReporteTabla } from '../components/reportes/ReporteTabla';
+import { TendenciasChart } from '../components/reportes/TendenciasChart';
+import {
+  getSalesReport,
+  getTopProducts,
+  getProductSeasonality,
+  getFinancialComparison
+} from '../services/reportesService';
 import { toast } from 'sonner';
-import { Download, Search, FileText } from 'lucide-react';
 
 export function Reportes() {
   const { orgId } = useAuth();
-  const [data, setData] = useState<ReporteItem[]>([]);
-  const [fechas, setFechas] = useState({ inicio: '', fin: '' });
+  const [tipoReporte, setTipoReporte] = useState<TipoReporte>('ventas');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [datosTabla, setDatosTabla] = useState<any[]>([]);
+  const [datosGrafica, setDatosGrafica] = useState<any[]>([]);
 
-  const generar = async () => {
-    if (!fechas.inicio || !fechas.fin) return toast.warning("Selecciona fechas");
+  const generarReporte = async () => {
+    if (!orgId || !fechaInicio || !fechaFin) {
+      toast.error('Por favor completa todos los campos');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await getReporteVentas(fechas.inicio, fechas.fin, orgId!);
-      setData(res);
-    } catch (e: any) { toast.error(e.message); }
+      switch (tipoReporte) {
+        case 'ventas':
+          await generarReporteVentas();
+          break;
+        case 'produccion':
+          await generarReporteProduccion();
+          break;
+        case 'gastos':
+          await generarReporteGastos();
+          break;
+        case 'productos':
+          await generarReporteProductos();
+          break;
+      }
+      toast.success('Reporte generado exitosamente');
+    } catch (error) {
+      console.error('Error generando reporte:', error);
+      toast.error('Error al generar reporte');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generarReporteVentas = async () => {
+    const datos = await getSalesReport(orgId!, fechaInicio, fechaFin, 'month');
+    setDatosTabla(datos);
+    setDatosGrafica(datos.map(d => ({
+      mes: d.label,
+      ingreso: Number(d.total_revenue)
+    })));
+  };
+
+  const generarReporteProduccion = async () => {
+    // Por ahora mostrar mensaje
+    toast('Vista de producción en construcción', { icon: '🚧' });
+    setDatosTabla([]);
+    setDatosGrafica([]);
+  };
+
+  const generarReporteGastos = async () => {
+    const datos = await getFinancialComparison(orgId!, 12);
+    const filtrados = datos.filter(d => {
+      const fecha = new Date(d.month);
+      return fecha >= new Date(fechaInicio) && fecha <= new Date(fechaFin);
+    });
+
+    setDatosTabla(filtrados);
+    setDatosGrafica(filtrados.map(d => ({
+      mes: d.month_label,
+      gastos: Number(d.expenses),
+      ingresos: Number(d.revenue)
+    })));
+  };
+
+  const generarReporteProductos = async () => {
+    const topProductos = await getTopProducts(orgId!, 10, 90);
+    const estacionalidad = await getProductSeasonality(orgId!);
+
+    setDatosTabla(topProductos);
+
+    // Agrupar estacionalidad por mes
+    const porMes = estacionalidad.reduce((acc: any, curr) => {
+      const mes = curr.month_name.trim();
+      if (!acc[mes]) {
+        acc[mes] = { mes, cantidad: 0 };
+      }
+      acc[mes].cantidad += Number(curr.quantity_sold);
+      return acc;
+    }, {});
+
+    setDatosGrafica(Object.values(porMes));
   };
 
   const exportarCSV = () => {
-    // Lógica simple de CSV
-    const headers = ["Fecha", "Cliente", "Producto", "Cantidad", "Total"];
-    const rows = data.map(d => [d.fecha, d.cliente, d.producto, d.cantidad, d.subtotal]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    window.open(encodedUri);
+    if (datosTabla.length === 0) {
+      toast.error('No hay datos para exportar');
+      return;
+    }
+
+    const headers = Object.keys(datosTabla[0]).join(',');
+    const rows = datosTabla.map(fila =>
+      Object.values(fila).join(',')
+    ).join('\n');
+
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_${tipoReporte}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+
+    toast.success('Reporte exportado');
+  };
+
+  // Configuración de columnas según tipo de reporte
+  const getColumnas = () => {
+    switch (tipoReporte) {
+      case 'ventas':
+        return [
+          { key: 'label', label: 'Período' },
+          { key: 'total_orders', label: 'Órdenes', formato: 'numero' },
+          { key: 'total_revenue', label: 'Ingresos', formato: 'moneda' },
+          { key: 'avg_ticket', label: 'Ticket Prom.', formato: 'moneda' }
+        ];
+      case 'gastos':
+        return [
+          { key: 'month_label', label: 'Mes' },
+          { key: 'revenue', label: 'Ingresos', formato: 'moneda' },
+          { key: 'expenses', label: 'Gastos', formato: 'moneda' },
+          { key: 'net_profit', label: 'Ganancia', formato: 'moneda' },
+          { key: 'profit_margin_percentage', label: 'Margen %', formato: 'porcentaje' }
+        ];
+      case 'productos':
+        return [
+          { key: 'rank', label: '#' },
+          { key: 'product_name', label: 'Producto' },
+          { key: 'category', label: 'Categoría' },
+          { key: 'quantity_sold', label: 'Vendidos', formato: 'numero' },
+          { key: 'revenue', label: 'Ingresos', formato: 'moneda' },
+          { key: 'times_ordered', label: 'Pedidos', formato: 'numero' }
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const getTituloTabla = () => {
+    const titulos = {
+      ventas: 'Reporte de Ventas',
+      produccion: 'Reporte de Producción',
+      gastos: 'Comparativo Financiero',
+      productos: 'Top Productos Más Vendidos'
+    };
+    return titulos[tipoReporte];
+  };
+
+  const getTituloGrafica = () => {
+    const titulos = {
+      ventas: 'Tendencia de Ingresos',
+      produccion: 'Producción Mensual',
+      gastos: 'Ingresos vs Gastos',
+      productos: 'Ventas por Mes'
+    };
+    return titulos[tipoReporte];
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-64px)] overflow-hidden flex flex-col bg-stone-50">
-      <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm mb-6 flex gap-4 items-end">
-        <div><label className="text-xs font-bold text-stone-400">Desde</label><input type="date" className="block p-2 border rounded-lg" onChange={e=>setFechas({...fechas, inicio: e.target.value})}/></div>
-        <div><label className="text-xs font-bold text-stone-400">Hasta</label><input type="date" className="block p-2 border rounded-lg" onChange={e=>setFechas({...fechas, fin: e.target.value})}/></div>
-        <button onClick={generar} className="bg-stone-900 text-white px-4 py-2.5 rounded-lg font-bold flex gap-2"><Search size={18}/> Generar</button>
-        {data.length > 0 && <button onClick={exportarCSV} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-bold flex gap-2 ml-auto"><Download size={18}/> Exportar</button>}
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-stone-800">📊 Reportes y Análisis</h1>
+        <p className="text-stone-500 mt-1">
+          Genera reportes personalizados y analiza tendencias
+        </p>
       </div>
 
-      <div className="flex-1 bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden overflow-y-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-stone-50 text-stone-500 font-bold">
-            <tr><th className="p-4">Fecha</th><th className="p-4">Cliente</th><th className="p-4">Item</th><th className="p-4 text-right">Cant</th><th className="p-4 text-right">Total</th></tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {data.map((r, i) => (
-              <tr key={i} className="hover:bg-stone-50">
-                <td className="p-4 text-stone-500 font-mono text-xs">{r.fecha} {r.hora}</td>
-                <td className="p-4 font-bold text-stone-700">{r.cliente}</td>
-                <td className="p-4">{r.producto}</td>
-                <td className="p-4 text-right">{r.cantidad}</td>
-                <td className="p-4 text-right font-bold text-emerald-600">Bs {r.subtotal.toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Filtros */}
+      <FiltrosReporte
+        tipoReporte={tipoReporte}
+        onTipoChange={setTipoReporte}
+        fechaInicio={fechaInicio}
+        fechaFin={fechaFin}
+        onFechaInicioChange={setFechaInicio}
+        onFechaFinChange={setFechaFin}
+        onGenerar={generarReporte}
+        loading={loading}
+      />
+
+      {/* Gráfica */}
+      {datosGrafica.length > 0 && (
+        <TendenciasChart
+          titulo={getTituloGrafica()}
+          datos={datosGrafica}
+          dataKeyX={tipoReporte === 'productos' ? 'mes' : 'mes'}
+          dataKeyY={tipoReporte === 'ventas' ? 'ingreso' : tipoReporte === 'gastos' ? 'ingresos' : 'cantidad'}
+          labelY={tipoReporte === 'ventas' ? 'Ingresos (Bs)' : tipoReporte === 'gastos' ? 'Monto (Bs)' : 'Cantidad'}
+          tipo={tipoReporte === 'productos' ? 'barra' : 'linea'}
+          loading={loading}
+        />
+      )}
+
+      {/* Tabla */}
+      {datosTabla.length > 0 && (
+        <ReporteTabla
+          titulo={getTituloTabla()}
+          columnas={getColumnas()}
+          datos={datosTabla}
+          loading={loading}
+          onExportar={exportarCSV}
+        />
+      )}
+
+      {/* Estado vacío inicial */}
+      {!loading && datosTabla.length === 0 && datosGrafica.length === 0 && (
+        <div className="bg-white p-12 rounded-xl border border-stone-200 text-center">
+          <div className="text-6xl mb-4">📊</div>
+          <h3 className="text-xl font-bold text-stone-800 mb-2">
+            Selecciona un período y genera tu reporte
+          </h3>
+          <p className="text-stone-500">
+            Elige el tipo de reporte, las fechas y haz clic en "Generar Reporte"
+          </p>
+        </div>
+      )}
     </div>
   );
 }

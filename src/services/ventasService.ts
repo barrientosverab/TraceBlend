@@ -9,8 +9,8 @@ export interface ItemCarrito {
   id: string;
   tipo: 'PRODUCTO' | 'VERDE';
   cantidad: number;
-  precio_venta: number; 
-  precio_final: number; 
+  precio_venta: number;
+  precio_final: number;
   nombre?: string;
   es_cortesia?: boolean;
   descuento?: number;
@@ -75,9 +75,9 @@ export const getCatalogoVentas = async () => {
   return (productos || []).map((p: any) => {
     const promocionesActivas = p.product_promotions || [];
     const mejorPromo = promocionesActivas.sort((a: any, b: any) => {
-        const descA = a.is_courtesy ? 100 : a.discount_percent;
-        const descB = b.is_courtesy ? 100 : b.discount_percent;
-        return descB - descA;
+      const descA = a.is_courtesy ? 100 : a.discount_percent;
+      const descB = b.is_courtesy ? 100 : b.discount_percent;
+      return descB - descA;
     })[0];
 
     return {
@@ -100,11 +100,11 @@ export const getCatalogoVentas = async () => {
 
 // --- FUNCIÓN CLAVE ACTUALIZADA ---
 export const registrarVenta = async (
-    datosVenta: DatosVenta, 
-    orgId: string, 
-    userId: string, 
-    // Nuevo parámetro: por defecto es 'completed', pero puede ser 'pending'
-    status: 'completed' | 'pending' = 'completed' 
+  datosVenta: DatosVenta,
+  orgId: string,
+  userId: string,
+  // Nuevo parámetro: por defecto es 'completed', pero puede ser 'pending'
+  status: 'completed' | 'pending' = 'completed'
 ) => {
   // Preparamos los items para enviarlos al SQL
   const itemsPayload = datosVenta.carrito.map(item => ({
@@ -137,18 +137,78 @@ export const registrarVenta = async (
 
 // --- NUEVA FUNCIÓN: RECUPERAR PENDIENTES ---
 export const getPedidosPendientes = async (orgId: string) => {
-    const { data, error } = await supabase
-        .from('sales_orders')
-        .select('id, total_amount, order_date, clients(business_name)')
-        .eq('organization_id', orgId)
-        .eq('status', 'pending') // Solo traemos los pendientes
-        .order('order_date', { ascending: false });
-    
-    if (error) throw error;
-    
-    // Simplificamos la respuesta para la vista
-    return data.map((d: any) => ({
-        ...d,
-        client_name: d.clients?.business_name || 'Cliente Casual'
-    }));
+  const { data, error } = await supabase
+    .from('sales_orders')
+    .select('id, total_amount, order_date, clients(business_name)')
+    .eq('organization_id', orgId)
+    .eq('status', 'pending') // Solo traemos los pendientes
+    .order('order_date', { ascending: false });
+
+  if (error) throw error;
+
+  // Simplificamos la respuesta para la vista
+  return data.map((d: any) => ({
+    ...d,
+    client_name: d.clients?.business_name || 'Cliente Casual'
+  }));
+};
+
+// --- FUNCIÓN: OBTENER DETALLE COMPLETO DE PEDIDO PENDIENTE ---
+export const getDetallePedidoPendiente = async (orderId: string) => {
+  // 1. Traer datos del pedido
+  const { data: order, error: orderError } = await supabase
+    .from('sales_orders')
+    .select(`
+      id,
+      client_id,
+      total_amount,
+      order_type,
+      clients (id, business_name, tax_id)
+    `)
+    .eq('id', orderId)
+    .eq('status', 'pending')
+    .single();
+
+  if (orderError) throw orderError;
+  if (!order) throw new Error("Pedido no encontrado");
+
+  // 2. Traer items del pedido con detalles del producto
+  const { data: items, error: itemsError } = await supabase
+    .from('sales_order_items')
+    .select(`
+      id,
+      product_id,
+      quantity,
+      unit_price,
+      is_courtesy,
+      products (id, name, sale_price, category)
+    `)
+    .eq('sales_order_id', orderId);
+
+  if (itemsError) throw itemsError;
+
+  return {
+    order,
+    items: (items || []).map(item => ({
+      id: item.product_id,
+      tipo: 'PRODUCTO' as const,
+      nombre: item.products?.name || 'Producto',
+      cantidad: item.quantity,
+      precio: item.products?.sale_price || 0,
+      precio_final: item.unit_price,
+      es_cortesia: item.is_courtesy,
+      descuento: 0, // El descuento ya está aplicado en unit_price
+      category: item.products?.category
+    }))
+  };
+};
+
+// --- FUNCIÓN: MARCAR PEDIDO COMO COMPLETADO ---
+export const marcarPedidoComoCompletado = async (orderId: string) => {
+  const { error } = await supabase
+    .from('sales_orders')
+    .update({ status: 'completed' })
+    .eq('id', orderId);
+
+  if (error) throw error;
 };

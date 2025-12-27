@@ -7,6 +7,7 @@ import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { SubscriptionGuard } from './components/auth/SubscriptionGuard';
 import { SetupGuard } from './components/auth/SetupGuard';
+import { PermissionGuard } from './components/auth/PermissionGuard';
 
 // --- IMPORTS DE PÁGINAS (Lazy Loading) ---
 // Autenticación & Onboarding
@@ -25,6 +26,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m
 // Ventas & Caja
 const Ventas = lazy(() => import('./pages/Ventas').then(m => ({ default: m.Ventas })));
 const CierreCaja = lazy(() => import('./pages/CierreCaja').then(m => ({ default: m.CierreCaja })));
+const HistorialCierres = lazy(() => import('./pages/HistorialCierres').then(m => ({ default: m.HistorialCierres })));
 const Clientes = lazy(() => import('./pages/Clientes').then(m => ({ default: m.Clientes })));
 
 // Producción
@@ -65,10 +67,10 @@ function App() {
     <BrowserRouter>
       {/* Notificaciones Toast Globales */}
       <Toaster position="top-center" richColors expand={true} style={{ zIndex: 99999 }} />
-      
+
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          
+
           {/* --- RUTA HÍBRIDA (Accesible siempre) --- */}
           <Route path="/registro" element={<Registro />} />
 
@@ -84,13 +86,13 @@ function App() {
 
           {/* --- RUTAS PRIVADAS (Layout con Sidebar) --- */}
           {isAuthenticated && (
-              <>
+            <>
               {/* RUTA SUPER ADMIN (Sin bloqueo de pago, para que tú entres siempre) */}
               <Route path="/super-admin" element={<Layout><SuperAdmin /></Layout>} />
 
               {/* --- ZONA DE CLIENTES (Protegida por Pago) --- */}
               {/* Aquí usamos Outlet para renderizar las rutas hijas dentro del Guard */}
-              <Route element={<SubscriptionGuard><Outlet/></SubscriptionGuard>}>
+              <Route element={<SubscriptionGuard><Outlet /></SubscriptionGuard>}>
                 {/* 1. Ruta de Onboarding (Protegida por SetupGuard para redirección inversa) */}
                 <Route path="/onboarding" element={
                   <SetupGuard>
@@ -99,50 +101,51 @@ function App() {
                 } />
 
                 <Route element={<SetupGuard><Layout /></SetupGuard>}>
-                <Route path="/" element={<Dashboard />} />
-                
-                {/* POS & Caja */}
-                <Route element={<ProtectedRoute allowedRoles={['administrador', 'vendedor']} />}>
-                  <Route path="/ventas" element={<Ventas />} />
-                  <Route path="/cierre-caja" element={<CierreCaja />} />
-                  <Route path="/clientes" element={<Clientes />} />
-                </Route>
+                  <Route path="/" element={<PermissionGuard feature="dashboard"><Dashboard /></PermissionGuard>} />
 
-                {/* Producción */}
-                <Route element={<ProtectedRoute allowedRoles={['administrador', 'operador', 'tostador']} />}>
-                  <Route path="/recepcion" element={<Recepcion />} />
-                  <Route path="/trilla" element={<Trilla />} />
-                  <Route path="/empaque" element={<Empaque />} />
-                  <Route path="/proveedores" element={<Proveedores />} />
-                </Route>
+                  {/* POS & Caja */}
+                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'vendedor']} />}>
+                    <Route path="/ventas" element={<PermissionGuard feature="pos"><Ventas /></PermissionGuard>} />
+                    <Route path="/cierre-caja" element={<PermissionGuard feature="cash_close"><CierreCaja /></PermissionGuard>} />
+                    <Route path="/clientes" element={<PermissionGuard feature="crm"><Clientes /></PermissionGuard>} />
+                  </Route>
 
-                {/* Tueste */}
-                <Route element={<ProtectedRoute allowedRoles={['administrador', 'tostador']} />}>
-                  <Route path="/tueste" element={<Tueste />} />
-                </Route>
+                  {/* Producción */}
+                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'operador', 'tostador']} />}>
+                    <Route path="/recepcion" element={<PermissionGuard feature="reception"><Recepcion /></PermissionGuard>} />
+                    <Route path="/trilla" element={<PermissionGuard feature="milling"><Trilla /></PermissionGuard>} />
+                    <Route path="/empaque" element={<PermissionGuard feature="packaging"><Empaque /></PermissionGuard>} />
+                    <Route path="/proveedores" element={<PermissionGuard feature="suppliers"><Proveedores /></PermissionGuard>} />
+                  </Route>
 
-                {/* Calidad */}
-                <Route element={<ProtectedRoute allowedRoles={['administrador', 'laboratorio']} />}>
-                  <Route path="/laboratorio" element={<Laboratorio />} />
-                </Route>
+                  {/* Tueste */}
+                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'tostador']} />}>
+                    <Route path="/tueste" element={<PermissionGuard feature="roasting"><Tueste /></PermissionGuard>} />
+                  </Route>
 
-                {/* Administración Avanzada */}
-                <Route element={<ProtectedRoute allowedRoles={['administrador']} />}>
-                  <Route path="/usuarios" element={<Usuarios />} />
-                  <Route path="/productos" element={<Productos />} />
-                  <Route path="/reportes" element={<Reportes />} />
-                  <Route path="/proyecciones" element={<Proyecciones />} />
-                  <Route path="/gastos" element={<Gastos />} />
-                  <Route path="/insumos" element={<Insumos />} />
-                  <Route path="/promociones" element={<Promociones />} />
-                </Route>
+                  {/* Calidad */}
+                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'laboratorio']} />}>
+                    <Route path="/laboratorio" element={<PermissionGuard feature="laboratory"><Laboratorio /></PermissionGuard>} />
+                  </Route>
+
+                  {/* Administración Avanzada */}
+                  <Route element={<ProtectedRoute allowedRoles={['administrador']} />}>
+                    <Route path="/usuarios" element={<PermissionGuard feature="team"><Usuarios /></PermissionGuard>} />
+                    <Route path="/productos" element={<PermissionGuard feature="catalog"><Productos /></PermissionGuard>} />
+                    <Route path="/reportes" element={<PermissionGuard feature="reports"><Reportes /></PermissionGuard>} />
+                    <Route path="/proyecciones" element={<PermissionGuard feature="projections"><Proyecciones /></PermissionGuard>} />
+                    <Route path="/gastos" element={<PermissionGuard feature="finance"><Gastos /></PermissionGuard>} />
+                    <Route path="/insumos" element={<PermissionGuard feature="inventory"><Insumos /></PermissionGuard>} />
+                    <Route path="/promociones" element={<PermissionGuard feature="promotions"><Promociones /></PermissionGuard>} />
+                    <Route path="/cierres-historico" element={<PermissionGuard feature="cash_close"><HistorialCierres /></PermissionGuard>} />
+                  </Route>
                 </Route> {/* Fin del Layout+SetupGuard */}
 
               </Route>
 
               {/* Redirección por defecto */}
               <Route path="*" element={<Navigate to="/" replace />} />
-            
+
             </>
           )}
 

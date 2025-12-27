@@ -1,2 +1,129 @@
 @import "tailwindcss";
 @plugin "tailwind-scrollbar";
+
+/* ============================================
+   TRACE BLEND - SISTEMA DE COLORES SEMÁNTICOS
+   ============================================ */
+
+@layer base {
+  :root {
+    /* Estados Semánticos */
+    --color-success: #10b981;      /* emerald-500 - acciones exitosas */
+    --color-warning: #f59e0b;      /* amber-500 - advertencias */
+    --color-error: #ef4444;        /* red-500 - errores */
+    --color-info: #3b82f6;         /* blue-500 - información */
+    
+    /* Acciones de Producción */
+    --color-reception: #f59e0b;    /* amber - recepción de materia prima */
+    --color-processing: #8b5cf6;   /* purple - procesamiento/trilla */
+    --color-roasting: #dc2626;     /* red-600 - tueste */
+    --color-quality: #8b5cf6;      /* purple - laboratorio/calidad */
+    --color-packaging: #14b8a6;    /* teal - empaque */
+    
+    /* Neutrales Mejorados */
+    --color-primary: #0c0a09;      /* stone-950 - primario oscuro */
+    --color-secondary: #10b981;    /* emerald-500 - secundario */
+    --color-accent: #f59e0b;       /* amber-500 - acento */
+    
+    /* Sombras */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    
+    /* Bordes Redondeados */
+    --radius-sm: 0.5rem;   /* 8px */
+    --radius-md: 0.75rem;  /* 12px */
+    --radius-lg: 1rem;     /* 16px */
+    --radius-xl: 1.5rem;   /* 24px */
+    
+    /* Espaciado */
+    --spacing-xs: 0.5rem;  /* 8px */
+    --spacing-sm: 1rem;    /* 16px */
+    --spacing-md: 1.5rem;  /* 24px */
+    --spacing-lg: 2rem;    /* 32px */
+    --spacing-xl: 3rem;    /* 48px */
+  }
+}
+
+@layer utilities {
+  /* Utilidades de Estado */
+  .status-success { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+  .status-warning { @apply bg-amber-50 text-amber-700 border-amber-200; }
+  .status-error { @apply bg-red-50 text-red-700 border-red-200; }
+  .status-info { @apply bg-blue-50 text-blue-700 border-blue-200; }
+  
+  /* Botones de Estado */
+  .btn-success { @apply bg-emerald-600 hover:bg-emerald-700 text-white; }
+  .btn-warning { @apply bg-amber-600 hover:bg-amber-700 text-white; }
+  .btn-error { @apply bg-red-600 hover:bg-red-700 text-white; }
+  .btn-info { @apply bg-blue-600 hover:bg-blue-700 text-white; }
+  
+  /* Badges de Producción */
+  .badge-reception { @apply bg-amber-100 text-amber-800 border-amber-300; }
+  .badge-processing { @apply bg-purple-100 text-purple-800 border-purple-300; }
+  .badge-roasting { @apply bg-red-100 text-red-800 border-red-300; }
+  .badge-quality { @apply bg-purple-100 text-purple-800 border-purple-300; }
+  .badge-packaging { @apply bg-teal-100 text-teal-800 border-teal-300; }
+  
+  /* Transiciones Suaves */
+  .transition-smooth { @apply transition-all duration-200 ease-in-out; }
+  .transition-bounce { @apply transition-all duration-300 ease-out; }
+  
+  /* Focus States Accesibles */
+  .focus-ring { @apply focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2; }
+  .focus-ring-error { @apply focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2; }
+}
+
+/* ============================================
+   ANIMACIONES PERSONALIZADAS
+   ============================================ */
+
+@layer utilities {
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-slide-in-right { animation: slideInRight 0.3s ease-out; }
+  .animate-slide-in-up { animation: slideInUp 0.3s ease-out; }
+  .animate-fade-in { animation: fadeIn 0.2s ease-in; }
+  .animate-scale-in { animation: scaleIn 0.2s ease-out; }
+}
