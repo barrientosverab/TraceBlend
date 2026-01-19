@@ -36,7 +36,7 @@ const MENU_GROUPS = [
       { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'], feature: 'finance' },
       { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'], feature: 'inventory' },
       { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'], feature: 'catalog' },
-      { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'], feature: 'projections' },
+      // { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'], feature: 'projections' }, // OCULTO PARA LANZAMIENTO
     ]
   },
   {
@@ -46,7 +46,7 @@ const MENU_GROUPS = [
       { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['administrador', 'vendedor'], feature: 'crm' },
       { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'], feature: 'suppliers' },
       { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'], feature: 'reports' },
-      { path: '/promociones', icon: Percent, label: 'Promociones', roles: ['administrador'], feature: 'promotions' },
+      // { path: '/promociones', icon: Percent, label: 'Promociones', roles: ['administrador'], feature: 'promotions' }, // OCULTO PARA LANZAMIENTO
     ]
   }
 ];
@@ -61,13 +61,22 @@ export function Sidebar() {
   const { subscription } = useSubscriptionAccess();
   const availableFeatures = new Set(subscription?.available_features || []);
 
+  // Verificamos si es Super Admin
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+
   /**
    * Verifica si el usuario tiene permiso basado en:
-   * 1. El plan de suscripción de la organización (features disponibles)
-   * 2. El rol del usuario
+   * 1. Si es Super Admin → Acceso total (bypass de features)
+   * 2. El plan de suscripción de la organización (features disponibles)
+   * 3. El rol del usuario
    */
   const hasPermission = (roles: string[], feature?: string) => {
-    // Primero verificar si el plan incluye la feature
+    // Super Admin tiene acceso total sin restricciones
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    // Para usuarios normales, verificar si el plan incluye la feature
     if (feature && !availableFeatures.has(feature)) {
       return false; // El plan no incluye esta feature
     }
@@ -75,9 +84,6 @@ export function Sidebar() {
     // Luego verificar el rol del usuario
     return roles.includes('all') || roles.includes(userRole);
   };
-
-  // Verificamos si es Super Admin
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
   return (
     <>
@@ -186,6 +192,16 @@ export function Sidebar() {
               <p className="text-[10px] text-stone-500 uppercase tracking-wide">{userRole}</p>
             </div>
           </div>
+
+          {/* Cambiar Contraseña */}
+          <Link
+            to="/cambiar-password"
+            onClick={() => setIsOpen(false)}
+            className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-stone-400 hover:bg-stone-800 hover:text-emerald-400 transition-colors text-xs font-bold uppercase tracking-wider mb-2"
+          >
+            <Settings size={14} /> Cambiar Contraseña
+          </Link>
+
           <button
             onClick={signOut}
             className="w-full flex items-center justify-center gap-2 p-2 rounded-lg text-stone-400 hover:bg-stone-800 hover:text-red-400 transition-colors text-xs font-bold uppercase tracking-wider"

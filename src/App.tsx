@@ -16,6 +16,7 @@ const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default:
 const Registro = lazy(() => import('./pages/Registro').then(m => ({ default: m.Registro })));
 const RecuperarPassword = lazy(() => import('./pages/RecuperarPassword').then(m => ({ default: m.RecuperarPassword })));
 const RestablecerPassword = lazy(() => import('./pages/RestablecerPassword').then(m => ({ default: m.RestablecerPassword })));
+const CambiarPassword = lazy(() => import('./pages/CambiarPassword').then(m => ({ default: m.CambiarPassword })));
 
 // Super Admin (SaaS)
 const SuperAdmin = lazy(() => import('./pages/SuperAdmin').then(m => ({ default: m.SuperAdmin })));
@@ -41,8 +42,10 @@ const Proveedores = lazy(() => import('./pages/Proveedores').then(m => ({ defaul
 const Usuarios = lazy(() => import('./pages/Usuarios').then(m => ({ default: m.Usuarios })));
 const Productos = lazy(() => import('./pages/Productos').then(m => ({ default: m.Productos })));
 const Reportes = lazy(() => import('./pages/Reportes').then(m => ({ default: m.Reportes })));
-const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ default: m.Proyecciones })));
-const Promociones = lazy(() => import('./pages/Promociones').then(m => ({ default: m.Promociones })));
+const ReporteVentasDia = lazy(() => import('./pages/ReporteVentasDia').then(m => ({ default: m.ReporteVentasDia })));
+// OCULTO PARA LANZAMIENTO
+// const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ default: m.Proyecciones })));
+// const Promociones = lazy(() => import('./pages/Promociones').then(m => ({ default: m.Promociones })));
 
 // Finanzas
 const Gastos = lazy(() => import('./pages/Gastos').then(m => ({ default: m.Gastos })));
@@ -90,6 +93,9 @@ function App() {
               {/* RUTA SUPER ADMIN (Sin bloqueo de pago, para que tú entres siempre) */}
               <Route path="/super-admin" element={<Layout><SuperAdmin /></Layout>} />
 
+              {/* RUTA CAMBIAR CONTRASEÑA (Accesible para todos los usuarios autenticados) */}
+              <Route path="/cambiar-password" element={<Layout><CambiarPassword /></Layout>} />
+
               {/* --- ZONA DE CLIENTES (Protegida por Pago) --- */}
               {/* Aquí usamos Outlet para renderizar las rutas hijas dentro del Guard */}
               <Route element={<SubscriptionGuard><Outlet /></SubscriptionGuard>}>
@@ -133,10 +139,13 @@ function App() {
                     <Route path="/usuarios" element={<PermissionGuard feature="team"><Usuarios /></PermissionGuard>} />
                     <Route path="/productos" element={<PermissionGuard feature="catalog"><Productos /></PermissionGuard>} />
                     <Route path="/reportes" element={<PermissionGuard feature="reports"><Reportes /></PermissionGuard>} />
-                    <Route path="/proyecciones" element={<PermissionGuard feature="projections"><Proyecciones /></PermissionGuard>} />
+                    <Route path="/reporte-ventas-dia" element={<PermissionGuard feature="reports"><ReporteVentasDia /></PermissionGuard>} />
+                    {/* OCULTO PARA LANZAMIENTO */}
+                    {/* <Route path="/proyecciones" element={<PermissionGuard feature="projections"><Proyecciones /></PermissionGuard>} /> */}
                     <Route path="/gastos" element={<PermissionGuard feature="finance"><Gastos /></PermissionGuard>} />
                     <Route path="/insumos" element={<PermissionGuard feature="inventory"><Insumos /></PermissionGuard>} />
-                    <Route path="/promociones" element={<PermissionGuard feature="promotions"><Promociones /></PermissionGuard>} />
+                    {/* OCULTO PARA LANZAMIENTO */}
+                    {/* <Route path="/promociones" element={<PermissionGuard feature="promotions"><Promociones /></PermissionGuard>} /> */}
                     <Route path="/cierres-historico" element={<PermissionGuard feature="cash_close"><HistorialCierres /></PermissionGuard>} />
                   </Route>
                 </Route> {/* Fin del Layout+SetupGuard */}
