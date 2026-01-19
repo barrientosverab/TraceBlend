@@ -63,7 +63,9 @@ export function Proyecciones() {
     const costoLote = selectedLote.costo_total; 
     
     const gananciaBruta = ingresoBruto - costoLote;
-    const margen = ingresoBruto > 0 ? (gananciaBruta / ingresoBruto) * 100 : 0;
+    // ROI correcto: (ganancia / inversión) * 100
+    // Si invertimos Bs 1000 y ganamos Bs 300, el ROI es 30%
+    const margen = costoLote > 0 ? (gananciaBruta / costoLote) * 100 : 0;
 
     return {
       pesoOro, mermaTrilla, pesoTostado, mermaTueste,

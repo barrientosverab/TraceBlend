@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  DollarSign, Calendar, Plus, Trash2, TrendingDown, CreditCard, 
+import {
+  Calendar, Plus, Trash2, TrendingDown, CreditCard,
   LayoutList, Settings, Wallet, X
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
-import { 
+import {
   getGastosFijos, crearGastoFijo, registrarPago, getHistorialPagos, eliminarGastoFijo,
-  GastoFijoForm, RegistroPagoForm 
+  GastoFijoForm, RegistroPagoForm
 } from '../services/gastosService';
 
 export function Gastos() {
   const { orgId } = useAuth();
   const [activeTab, setActiveTab] = useState<'libro' | 'config'>('libro');
   const [loading, setLoading] = useState(false);
-  
-  // Datos
+
+  // Datos - using any for complex database records
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [fijos, setFijos] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [historial, setHistorial] = useState<any[]>([]);
 
   // Formularios
@@ -43,7 +45,10 @@ export function Gastos() {
       toast.success("Gasto recurrente guardado");
       setNuevoFijo({ name: '', amount: '', category: 'otros', frequency: 'mensual' });
       cargarDatos();
-    } catch (e: any) { toast.error(e.message); }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al crear gasto';
+      toast.error(message);
+    }
     finally { setLoading(false); }
   };
 
@@ -55,10 +60,14 @@ export function Gastos() {
       toast.success("Pago registrado");
       setNuevoPago({ ...nuevoPago, description: '', amount_paid: '', expense_id: '' });
       cargarDatos();
-    } catch (e: any) { toast.error(e.message); }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al registrar pago';
+      toast.error(message);
+    }
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const prellenarPago = (gastoFijo: any) => {
     setNuevoPago({
       ...nuevoPago,
@@ -72,66 +81,66 @@ export function Gastos() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-stone-50 overflow-hidden">
-      
+
       {/* HEADER TABS RESPONSIVO */}
       <div className="bg-white border-b border-stone-200 px-4 py-3 flex flex-col md:flex-row md:items-center justify-between shadow-sm z-10 gap-3">
         <div className="flex gap-2 w-full md:w-auto">
-          <button onClick={()=>setActiveTab('libro')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab==='libro' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
-            <LayoutList size={18}/> Libro Diario
+          <button onClick={() => setActiveTab('libro')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'libro' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+            <LayoutList size={18} /> Libro Diario
           </button>
-          <button onClick={()=>setActiveTab('config')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab==='config' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
-            <Settings size={18}/> Configuración
+          <button onClick={() => setActiveTab('config')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'config' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+            <Settings size={18} /> Configuración
           </button>
         </div>
-        
+
         {/* Total Gastos (Visible en móvil como tarjeta compacta) */}
         <div className="flex items-center justify-between md:justify-end bg-red-50 px-7 py-2 rounded-lg border border-red-100 w-full md:w-auto">
-          <span className="text-xs uppercase text-red-400 font-bold flex items-left gap-1"><Wallet size={14}/> Salidas Mes : </span>
+          <span className="text-xs uppercase text-red-400 font-bold flex items-left gap-1"><Wallet size={14} /> Salidas Mes : </span>
           <span className="text-lg font-mono font-bold text-red-600">Bs {historial.reduce((sum, h) => sum + h.monto, 0).toLocaleString()}</span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-hide">
-        
+
         {/* --- PESTAÑA 1: LIBRO DIARIO (REGISTRO) --- */}
         {activeTab === 'libro' && (
           <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* Formulario Registro */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 h-fit order-1">
               <h3 className="font-bold text-stone-800 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-                <CreditCard size={16} className="text-red-500"/> Nueva Salida
+                <CreditCard size={16} className="text-red-500" /> Nueva Salida
               </h3>
-              
+
               <div className="space-y-4">
                 {nuevoPago.expense_id && (
                   <div className="bg-blue-50 text-blue-800 p-3 rounded-xl text-sm flex justify-between items-center animate-in fade-in zoom-in">
                     <span className="truncate mr-2">Pagar: <b>{nuevoPago.description.replace('Pago: ', '')}</b></span>
-                    <button onClick={()=>setNuevoPago({...nuevoPago, expense_id: '', description: '', amount_paid: ''})} className="bg-blue-100 p-1 rounded-full hover:bg-blue-200"><X size={14}/></button>
+                    <button onClick={() => setNuevoPago({ ...nuevoPago, expense_id: '', description: '', amount_paid: '' })} className="bg-blue-100 p-1 rounded-full hover:bg-blue-200"><X size={14} /></button>
                   </div>
                 )}
 
                 <div>
                   <label className="text-xs font-bold text-stone-400 uppercase">Concepto</label>
-                  <input className="w-full p-3 border rounded-xl mt-1 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Compra de Leche" value={nuevoPago.description} onChange={e=>setNuevoPago({...nuevoPago, description: e.target.value})}/>
+                  <input className="w-full p-3 border rounded-xl mt-1 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Compra de Leche" value={nuevoPago.description} onChange={e => setNuevoPago({ ...nuevoPago, description: e.target.value })} />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-stone-400 uppercase">Monto</label>
                     <div className="relative mt-1">
                       <span className="absolute left-3 top-3 text-stone-400 font-bold text-xs">Bs</span>
-                      <input type="number" className="w-full pl-8 p-3 border rounded-xl font-bold text-red-600 outline-none" placeholder="0.00" value={nuevoPago.amount_paid} onChange={e=>setNuevoPago({...nuevoPago, amount_paid: e.target.value})}/>
+                      <input type="number" className="w-full pl-8 p-3 border rounded-xl font-bold text-red-600 outline-none" placeholder="0.00" value={nuevoPago.amount_paid} onChange={e => setNuevoPago({ ...nuevoPago, amount_paid: e.target.value })} />
                     </div>
                   </div>
                   <div>
                     <label className="text-xs font-bold text-stone-400 uppercase">Fecha</label>
-                    <input type="date" className="w-full p-3 border rounded-xl mt-1 text-sm bg-white" value={nuevoPago.payment_date} onChange={e=>setNuevoPago({...nuevoPago, payment_date: e.target.value})}/>
+                    <input type="date" className="w-full p-3 border rounded-xl mt-1 text-sm bg-white" value={nuevoPago.payment_date} onChange={e => setNuevoPago({ ...nuevoPago, payment_date: e.target.value })} />
                   </div>
                 </div>
 
                 <button onClick={handleRegistrarPago} disabled={loading} className="w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white py-4 rounded-xl font-bold shadow-lg transition-all flex justify-center gap-2 mt-2">
-                  {loading ? '...' : <><TrendingDown size={20}/> Registrar Gasto</>}
+                  {loading ? '...' : <><TrendingDown size={20} /> Registrar Gasto</>}
                 </button>
               </div>
             </div>
@@ -139,7 +148,7 @@ export function Gastos() {
             {/* Historial (Responsive: Cards en móvil, Tabla en PC) */}
             <div className="lg:col-span-2 order-2">
               <h3 className="font-bold text-stone-500 text-xs uppercase mb-3 ml-1">Últimos Movimientos</h3>
-              
+
               {/* Vista Móvil (Cards) */}
               <div className="md:hidden space-y-3">
                 {historial.map(h => (
@@ -171,7 +180,7 @@ export function Gastos() {
                   </tbody>
                 </table>
               </div>
-              
+
               {historial.length === 0 && <div className="text-center p-8 text-stone-400 italic bg-white rounded-xl border border-dashed">No hay gastos registrados.</div>}
             </div>
           </div>
@@ -180,20 +189,20 @@ export function Gastos() {
         {/* --- PESTAÑA 2: CONFIGURACIÓN FIJOS --- */}
         {activeTab === 'config' && (
           <div className="max-w-4xl mx-auto space-y-6">
-            
+
             {/* Formulario Crear (Stack en móvil, Row en PC) */}
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 flex flex-col md:flex-row gap-4 items-end">
               <div className="flex-1 w-full space-y-1">
                 <label className="text-xs font-bold text-stone-400 uppercase">Nombre del Gasto</label>
-                <input className="w-full p-3 border rounded-xl bg-stone-50 focus:bg-white transition-colors outline-none" placeholder="Ej: Alquiler Local" value={nuevoFijo.name} onChange={e=>setNuevoFijo({...nuevoFijo, name: e.target.value})}/>
+                <input className="w-full p-3 border rounded-xl bg-stone-50 focus:bg-white transition-colors outline-none" placeholder="Ej: Alquiler Local" value={nuevoFijo.name} onChange={e => setNuevoFijo({ ...nuevoFijo, name: e.target.value })} />
               </div>
               <div className="w-full md:w-32 space-y-1">
                 <label className="text-xs font-bold text-stone-400 uppercase">Monto Fijo</label>
-                <input type="number" className="w-full p-3 border rounded-xl" placeholder="0" value={nuevoFijo.amount} onChange={e=>setNuevoFijo({...nuevoFijo, amount: e.target.value})}/>
+                <input type="number" className="w-full p-3 border rounded-xl" placeholder="0" value={nuevoFijo.amount} onChange={e => setNuevoFijo({ ...nuevoFijo, amount: e.target.value })} />
               </div>
               <div className="w-full md:w-40 space-y-1">
                 <label className="text-xs font-bold text-stone-400 uppercase">Categoría</label>
-                <select className="w-full p-3 border rounded-xl bg-white" value={nuevoFijo.category} onChange={e=>setNuevoFijo({...nuevoFijo, category: e.target.value})}>
+                <select className="w-full p-3 border rounded-xl bg-white" value={nuevoFijo.category} onChange={e => setNuevoFijo({ ...nuevoFijo, category: e.target.value })}>
                   <option value="alquiler">Alquiler</option>
                   <option value="nomina">Nómina</option>
                   <option value="servicios">Servicios</option>
@@ -202,7 +211,7 @@ export function Gastos() {
                 </select>
               </div>
               <button onClick={handleCrearFijo} className="w-full md:w-auto bg-stone-900 text-white p-3 rounded-xl hover:bg-black transition-colors flex justify-center items-center">
-                <Plus size={24}/> <span className="md:hidden ml-2 font-bold">Agregar Gasto</span>
+                <Plus size={24} /> <span className="md:hidden ml-2 font-bold">Agregar Gasto</span>
               </button>
             </div>
 
@@ -214,7 +223,7 @@ export function Gastos() {
                   <div>
                     <h4 className="font-bold text-stone-800 text-lg">{f.name}</h4>
                     <p className="text-xs text-stone-500 uppercase tracking-wide mt-1 flex items-center gap-2">
-                      <Calendar size={12}/> {f.frequency} • {f.category}
+                      <Calendar size={12} /> {f.frequency} • {f.category}
                     </p>
                   </div>
                   <div className="text-right">
@@ -223,8 +232,8 @@ export function Gastos() {
                       <button onClick={() => prellenarPago(f)} className="text-xs bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-200 font-bold transition-colors">
                         Pagar Ahora
                       </button>
-                      <button onClick={() => { if(confirm('¿Borrar?')) eliminarGastoFijo(f.id).then(cargarDatos); }} className="text-stone-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={18}/>
+                      <button onClick={() => { if (confirm('¿Borrar?')) eliminarGastoFijo(f.id).then(cargarDatos); }} className="text-stone-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </div>

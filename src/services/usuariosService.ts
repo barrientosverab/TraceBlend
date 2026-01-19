@@ -52,7 +52,17 @@ export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
       }
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      // Mensajes de error más descriptivos
+      if (authError.message.includes('not allowed') || authError.message.includes('JWT')) {
+        throw new Error('Error de configuración: Verifica que estés usando el Service Role Key en Supabase. Contacta al administrador del sistema.');
+      }
+      if (authError.message.includes('already registered')) {
+        throw new Error('Este email ya está registrado en el sistema.');
+      }
+      throw new Error(`Error al crear usuario: ${authError.message}`);
+    }
+
     if (!authData.user) throw new Error('No se pudo crear el usuario');
 
     // PASO 2: Crear/actualizar el perfil con organization_id

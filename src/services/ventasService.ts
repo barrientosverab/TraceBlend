@@ -14,6 +14,8 @@ export interface ItemCarrito {
   nombre?: string;
   es_cortesia?: boolean;
   descuento?: number;
+  para_llevar?: boolean;  // Flag individual por item
+  costo_envase?: number;   // Costo del envase si para_llevar = true
 }
 
 export interface DatosVenta {

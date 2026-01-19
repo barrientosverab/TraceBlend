@@ -1,6 +1,10 @@
 import React from 'react';
 import { Lock, Zap, CheckCircle } from 'lucide-react';
 import { useSubscriptionAccess } from '../../hooks/useSubscriptionAccess';
+import { useAuth } from '../../hooks/useAuth';
+
+// Email del super admin
+const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com";
 
 interface PermissionGuardProps {
     children: React.ReactNode;
@@ -13,6 +17,8 @@ interface PermissionGuardProps {
  * 
  * Verifica que la organización tenga acceso a una feature específica.
  * Si no tiene acceso, muestra una pantalla de upgrade.
+ * 
+ * SUPER ADMIN: El super admin tiene acceso total a todas las features sin restricciones.
  * 
  * @param feature - Código de la feature requerida
  * @param children - Contenido a renderizar si tiene acceso
@@ -30,7 +36,14 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     feature,
     fallback
 }) => {
+    const { user } = useAuth();
     const { hasAccess, loading, subscription } = useSubscriptionAccess(feature);
+
+    // Super Admin tiene acceso total, sin verificación de plan
+    const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+    if (isSuperAdmin) {
+        return <>{children}</>;
+    }
 
     // Mientras carga
     if (loading) {
