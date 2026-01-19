@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getReports, getLotesParaAnalisis, createInternalReport, createExternalReport, type LabReportComplete, type LoteAnalisis } from '../services/laboratorioService';
+import { getReports, getLotesParaAnalisis, createInternalReport, createExternalReport, deleteReport, type LoteAnalisis } from '../services/laboratorioService';
+import { type LabReportComplete } from '../types/laboratorio';
 import { TablaReportesLaboratorio } from '../components/TablaReportesLaboratorio';
 import { VisualizadorReporte } from '../components/VisualizadorReporte';
 import { FormularioMuestraExterna } from '../components/FormularioMuestraExterna';
@@ -296,6 +297,19 @@ export function Laboratorio() {
             <TablaReportesLaboratorio
               reportes={reportesFiltrados}
               onViewReport={handleVerReporte}
+              onDeleteReport={(reportId) => {
+                toast.promise(
+                  deleteReport(reportId),
+                  {
+                    loading: 'Eliminando reporte...',
+                    success: () => {
+                      cargarDatos();
+                      return 'Reporte eliminado correctamente';
+                    },
+                    error: (err) => err.message || 'Error al eliminar reporte'
+                  }
+                );
+              }}
               isLoading={isLoading}
             />
           </Card>

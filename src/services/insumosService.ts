@@ -16,6 +16,23 @@ export const getInsumos = async (orgId: string): Promise<InsumoRow[]> => {
   return data || [];
 };
 
+/**
+ * Obtiene lista de insumos que pueden ser usados como envases
+ * NOTA: Como supplies_inventory no tiene campo category, devolvemos todos los insumos.
+ * El usuario debe identificar visualmente cuáles son envases (vasos, bolsas, cajas, etc.)
+ */
+export const getInsumosParaEnvases = async (orgId: string) =>{
+  const { data, error } = await supabase
+    .from('supplies_inventory')
+    .select('id, name, current_stock, unit_measure')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('name');
+
+  if (error) throw error;
+  return data || [];
+};
+
 export const crearInsumo = async (datos: InsumoInsert) => {
   const { data, error } = await supabase
     .from('supplies_inventory')

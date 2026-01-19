@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Database } from '../types/supabase';
+import { Payment, formatPaymentsForDB } from '../types/payments';
 
 // Definimos los tipos para TypeScript
 type ProductRow = Database['public']['Tables']['products']['Row'];
@@ -14,13 +15,16 @@ export interface ItemCarrito {
   nombre?: string;
   es_cortesia?: boolean;
   descuento?: number;
+  para_llevar?: boolean;  // Flag individual por item
+  costo_envase?: number;   // Costo del envase si para_llevar = true
 }
 
 export interface DatosVenta {
   cliente_id: string;
   carrito: ItemCarrito[];
   total: number;
-  metodoPago: string;
+  payments: Payment[]; // ✅ NUEVO: Array de pagos mixtos
+  metodoPago?: string; // @deprecated - mantener para compatibilidad
   tipoPedido: 'dine_in' | 'takeaway';
 }
 
@@ -115,16 +119,21 @@ export const registrarVenta = async (
     discount_val: item.descuento || 0
   }));
 
-  // Llamamos a la función SQL que actualizamos en el paso anterior
+  // ✅ Preparar pagos: si viene payments[] se usa, si no, fallback a metodoPago único
+  const paymentsPayload = datosVenta.payments && datosVenta.payments.length > 0
+    ? formatPaymentsForDB(datosVenta.payments)
+    : [{ method: datosVenta.metodoPago || 'Efectivo', amount: datosVenta.total }];
+
+  // Llamamos a la función SQL actualizada
   const { data, error } = await supabase.rpc('registrar_venta_transaccion', {
     p_org_id: orgId,
     p_client_id: datosVenta.cliente_id,
     p_seller_id: userId,
     p_total: datosVenta.total,
     p_items: itemsPayload as any,
-    p_payment_method: datosVenta.metodoPago,
+    p_payments: paymentsPayload as any, // ✅ NUEVO: Enviamos array de pagos
     p_order_type: datosVenta.tipoPedido,
-    p_status: status // <--- Aquí pasamos el estado
+    p_status: status
   });
 
   if (error) {

@@ -9,7 +9,9 @@ import { useAuth } from '../hooks/useAuth';
 import { getClientes, getCatalogoVentas, registrarVenta, crearCliente, getPedidosPendientes, getDetallePedidoPendiente, marcarPedidoComoCompletado } from '../services/ventasService';
 import { verificarEstadoCaja } from '../services/cajaService';
 import { getPromociones } from '../services/promocionesService';
-import { AperturaCaja } from './AperturaCaja'; // <--- Importamos la pantalla de bloqueo
+import { AperturaCaja } from './AperturaCaja';
+import { PagoMixtoModal } from '../components/PagoMixtoModal'; // ✅ NUEVO
+import { Payment } from '../types/payments'; // ✅ NUEVO
 import { toast } from 'sonner';
 
 const CATEGORIAS = [
@@ -43,13 +45,14 @@ export function Ventas() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Configuración Venta
-  const [metodoPago, setMetodoPago] = useState('Efectivo');
+  const [payments, setPayments] = useState<Payment[]>([]); // ✅ NUEVO: Pagos mixtos
+  const [showModalPago, setShowModalPago] = useState(false); // ✅ NUEVO: Modal de pago
   const [tipoPedido, setTipoPedido] = useState<'dine_in' | 'takeaway'>('dine_in');
   const [catFiltro, setCatFiltro] = useState('all');
   const [busquedaProd, setBusquedaProd] = useState('');
   const [showModalCliente, setShowModalCliente] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ razon_social: '', nit: '', telefono: '' });
-  const [showPendientes, setShowPendientes] = useState(false); // Modal lista pendientes
+  const [showPendientes, setShowPendientes] = useState(false);
 
   // Descuentos Globales
   const [convenioActivo, setConvenioActivo] = useState<any>(null);
@@ -219,6 +222,18 @@ export function Ventas() {
     if (carrito.length === 0) return toast.warning("Carrito vacío");
     if (!clienteSeleccionado) return toast.warning("Selecciona cliente");
 
+    // Si es venta completada, mostrar modal de pago
+    if (status === 'completed') {
+      setShowModalPago(true);
+      return;
+    }
+
+    // Si es pending, procesar directamente sin pago
+    await procesarVenta([], status);
+  };
+
+  // ✅ NUEVA FUNCIÓN: Procesar venta con pagos confirmados
+  const procesarVenta = async (paymentsConfirmed: Payment[], status: 'completed' | 'pending' = 'completed') => {
     setLoading(true);
     try {
       const carritoFinal = carrito.map(item => {
@@ -234,12 +249,12 @@ export function Ventas() {
         return item;
       });
 
-      // Enviamos el 'status' al servicio
+      // ✅ Enviar con payments array
       await registrarVenta({
         cliente_id: clienteSeleccionado.id,
         carrito: carritoFinal,
         total: totalFinal,
-        metodoPago: status === 'pending' ? 'Pendiente' : metodoPago,
+        payments: paymentsConfirmed, // ✅ NUEVO
         tipoPedido: tipoPedido
       }, orgId!, user!.id, status);
 
@@ -252,13 +267,17 @@ export function Ventas() {
       // Limpieza
       setCarrito([]);
       setConvenioActivo(null); setDescuentoManual(0); setEsCortesiaGlobal(false);
-      setMetodoPago('Efectivo'); setClienteSeleccionado(null); setBusquedaCliente('');
+      setPayments([]); setClienteSeleccionado(null); setBusquedaCliente('');
+      setShowModalPago(false);
 
       // Si fue pendiente, recargamos la lista
       if (status === 'pending') cargarTodo();
 
-    } catch (e: any) { toast.error(e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) { 
+      toast.error(e.message); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   // --- FILTROS ---
@@ -496,19 +515,8 @@ export function Ventas() {
             </div>
           </div>
 
-          {/* SELECTOR PAGO Y CLIENTE */}
+          {/* BUSCADOR CLIENTE */}
           <div className="flex gap-2 mt-2">
-            <div className="flex-1 bg-white border border-stone-200 rounded-xl flex overflow-hidden">
-              {['Efectivo', 'QR', 'Tarjeta'].map(m => (
-                <button key={m} onClick={() => setMetodoPago(m)} className={`flex-1 py-2 text-[10px] font-bold uppercase transition-all ${metodoPago === m ? 'bg-stone-800 text-white' : 'text-stone-400 hover:bg-stone-50'}`}>
-                  {m === 'Efectivo' && <Banknote size={14} className="mx-auto mb-0.5" />}
-                  {m === 'QR' && <QrCode size={14} className="mx-auto mb-0.5" />}
-                  {m === 'Tarjeta' && <CreditCard size={14} className="mx-auto mb-0.5" />}
-                  <span className="hidden sm:inline">{m}</span>
-                </button>
-              ))}
-            </div>
-            {/* Buscador Cliente */}
             <div ref={wrapperRef} className="flex-1 relative">
               <div className="relative h-full">
                 <Search className="absolute left-2 top-3 text-stone-400" size={14} />
@@ -516,7 +524,7 @@ export function Ventas() {
                 {clienteSeleccionado && <CheckCircle className="absolute right-2 top-3 text-emerald-500" size={14} />}
               </div>
               {mostrarResultadosClientes && busquedaCliente && (
-                <div className="absolute bottom-full mb-1 w-64 bg-white border border-stone-200 rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 left-0">
+                <div className="absolute bottom-full mb-1 w-full bg-white border border-stone-200 rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 left-0">
                   {clientesFiltrados.map(c => <button key={c.id} onClick={() => seleccionarCliente(c)} className="w-full text-left p-2 hover:bg-stone-50 border-b border-stone-100"><p className="font-bold text-xs text-stone-800">{c.business_name}</p><p className="text-[10px] text-stone-500">{c.tax_id}</p></button>)}
                   <button onClick={() => setShowModalCliente(true)} className="w-full p-2 bg-stone-50 text-emerald-600 font-bold text-xs flex items-center justify-center gap-1"><UserPlus size={12} /> Nuevo</button>
                 </div>
@@ -577,6 +585,15 @@ export function Ventas() {
               ))}
           </div>
         </div>
+      )}
+
+      {/* ✅ NUEVO: Modal de Pago Mixto */}
+      {showModalPago && (
+        <PagoMixtoModal
+          totalAPagar={totalFinal}
+          onConfirm={(paymentsConfirmed) => procesarVenta(paymentsConfirmed, 'completed')}
+          onCancel={() => setShowModalPago(false)}
+        />
       )}
     </div>
   );

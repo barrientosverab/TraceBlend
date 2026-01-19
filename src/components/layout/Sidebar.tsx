@@ -58,8 +58,14 @@ export function Sidebar() {
   const userRole = profile?.role || 'viewer';
 
   // Obtener información de suscripción (sin feature específica)
-  const { subscription } = useSubscriptionAccess();
+  const { subscription, loading } = useSubscriptionAccess();
   const availableFeatures = new Set(subscription?.available_features || []);
+
+  // DEBUG: Log subscription data
+  console.log('[Sidebar] DEBUG - Subscription:', subscription);
+  console.log('[Sidebar] DEBUG - Loading:', loading);
+  console.log('[Sidebar] DEBUG - Available Features:', Array.from(availableFeatures));
+  console.log('[Sidebar] DEBUG - User Role:', userRole);
 
   // Verificamos si es Super Admin
   const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
@@ -78,11 +84,14 @@ export function Sidebar() {
 
     // Para usuarios normales, verificar si el plan incluye la feature
     if (feature && !availableFeatures.has(feature)) {
+      console.log(`[Sidebar] DEBUG - Feature '${feature}' NOT in availableFeatures`);
       return false; // El plan no incluye esta feature
     }
 
     // Luego verificar el rol del usuario
-    return roles.includes('all') || roles.includes(userRole);
+    const hasRole = roles.includes('all') || roles.includes(userRole);
+    console.log(`[Sidebar] DEBUG - Feature '${feature}' - hasRole: ${hasRole}`);
+    return hasRole;
   };
 
   return (

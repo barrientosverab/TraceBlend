@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
 import { hasFeatureAccess, getOrganizationSubscription, OrganizationSubscription } from '../services/subscriptionService';
 
+// Email del super admin
+const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com";
+
 interface UseSubscriptionAccessResult {
     hasAccess: boolean;
     loading: boolean;
@@ -10,6 +13,8 @@ interface UseSubscriptionAccessResult {
 
 /**
  * Hook personalizado para verificar acceso a features según plan de suscripción
+ * 
+ * SUPER ADMIN: El super admin tiene acceso total a todas las features sin restricciones.
  * 
  * @param featureCode - Código de la feature a verificar (ej: 'pos', 'laboratory', 'reports')
  * @returns Estado de acceso, carga y datos de suscripción
@@ -24,12 +29,22 @@ interface UseSubscriptionAccessResult {
  * ```
  */
 export function useSubscriptionAccess(featureCode?: string): UseSubscriptionAccessResult {
-    const { orgId, loading: authLoading } = useAuth();
+    const { user, orgId, loading: authLoading } = useAuth();
     const [hasAccess, setHasAccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [subscription, setSubscription] = useState<OrganizationSubscription | null>(null);
 
+    // Super Admin tiene acceso total inmediato
+    const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+
     useEffect(() => {
+        // Si es super admin, acceso total sin verificaciones
+        if (isSuperAdmin) {
+            setHasAccess(true);
+            setLoading(false);
+            return;
+        }
+
         async function checkAccess() {
             // Si no hay orgId, no hay acceso
             if (!orgId) {
@@ -67,7 +82,7 @@ export function useSubscriptionAccess(featureCode?: string): UseSubscriptionAcce
         if (!authLoading) {
             checkAccess();
         }
-    }, [orgId, featureCode, authLoading]);
+    }, [user, orgId, featureCode, authLoading, isSuperAdmin]);
 
     return { hasAccess, loading, subscription };
 }

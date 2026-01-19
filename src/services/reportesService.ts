@@ -32,7 +32,7 @@ export const getReporteVentas = async (fechaInicio: string, fechaFin: string, or
 
   if (error) throw error;
 
-  let reportePlano: ReporteItem[] = [];
+  const reportePlano: ReporteItem[] = [];
 
   (data || []).forEach((orden: any) => {
     orden.items.forEach((item: any) => {

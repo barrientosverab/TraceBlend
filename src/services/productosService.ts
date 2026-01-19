@@ -22,6 +22,8 @@ export interface ProductoForm {
   package_weight_grams?: string | number;
   stock_inicial?: string | number;
   receta?: IngredienteReceta[]; // Array de ingredientes
+  container_supply_id?: string | null;  // ID del insumo usado como envase
+  takeaway_additional_cost?: string | number; // Costo adicional por envase
 }
 
 /**
@@ -78,7 +80,9 @@ export const crearProducto = async (datos: ProductoForm, orgId: string) => {
       sale_price: Number(datos.sale_price),
       category: datos.category,
       is_roasted: datos.is_roasted,
-      package_weight_grams: datos.is_roasted ? Number(datos.package_weight_grams) : null
+      package_weight_grams: datos.is_roasted ? Number(datos.package_weight_grams) : null,
+      container_supply_id: datos.container_supply_id || null,
+      takeaway_additional_cost: datos.takeaway_additional_cost ? Number(datos.takeaway_additional_cost) : 0
     }])
     .select()
     .single();
@@ -128,6 +132,8 @@ export const actualizarProducto = async (id: string, datos: Partial<ProductoForm
       sku: datos.sku,
       sale_price: Number(datos.sale_price),
       category: datos.category,
+      container_supply_id: datos.container_supply_id || null,
+      takeaway_additional_cost: datos.takeaway_additional_cost ? Number(datos.takeaway_additional_cost) : 0
       // Nota: is_roasted no se suele cambiar tras crear por las implicaciones de inventario
     })
     .eq('id', id);
@@ -164,7 +170,8 @@ export const getTodosLosProductos = async (orgId: string) => {
     .from('products')
     .select(`
       *,
-      finished_inventory ( current_stock )
+      finished_inventory ( current_stock ),
+      container_supply:supplies_inventory!container_supply_id ( id, name, current_stock )
     `)
     .eq('organization_id', orgId)
     .eq('is_active', true) // Solo activos

@@ -9,13 +9,13 @@ export const registrarUsuarioInicial = async (datos: { email: string, password: 
       data: {
         first_name: datos.nombre,
         // Si viene con invitación, guardamos el ID para usarlo luego
-        invited_org_id: datos.inviteOrgId || null 
+        invited_org_id: datos.inviteOrgId || null
       }
     }
   });
 
   if (error) throw error;
-  
+
   // Si fue invitado, lo vinculamos inmediatamente a la organización
   if (data.user && datos.inviteOrgId) {
     await supabase
@@ -32,7 +32,7 @@ export const crearOrganizacionYVincular = async (userId: string, nombreEmpresa: 
   // 1. Crear Org
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .insert([{ name: nombreEmpresa, plan_type: 'free' }])
+    .insert([{ name: nombreEmpresa, plan: 'free_trial', status: 'trialing' }])
     .select()
     .single();
 

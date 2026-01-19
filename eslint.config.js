@@ -25,6 +25,8 @@ export default tseslint.config(
       ],
       // Regla opcional para permitir 'any' explícito si es necesario, 
       // aunque es mejor corregirlo. Por ahora lo dejamos estandar.
+      // Desactivamos esta regla porque interfiere con patrones válidos de carga de datos async
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 )

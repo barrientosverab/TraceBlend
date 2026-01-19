@@ -230,35 +230,65 @@ export const getDetalleCierre = async (cierreId: string): Promise<DetalleCierre>
     .limit(1)
     .single();
 
-  // Obtener ventas del período agrupadas por método de pago
-  const { data: ventas } = await supabase
+  // ✅ ACTUALIZADO: Obtener pagos del período desde sales_order_payments
+  // Esto soporta pagos mixtos correctamente
+  const inicio = apertura?.opened_at || cierre.closed_at;
+  const fin = cierre.closed_at;
+
+  // Primero obtenemos las ventas del período
+  const { data: ordenesDelPeriodo } = await supabase
     .from('sales_orders')
-    .select('payment_method, total_amount')
+    .select('id')
     .eq('seller_id', cierre.user_id)
     .eq('status', 'completed')
-    .gte('order_date', apertura?.opened_at || cierre.closed_at)
-    .lte('order_date', cierre.closed_at);
+    .gte('order_date', inicio)
+    .lte('order_date', fin);
 
-  // Agrupar ventas por método de pago
+  const idsOrdenes = (ordenesDelPeriodo || []).map((o: any) => o.id);
+
+  // Ahora obtenemos los pagos de esas órdenes
+  let payments: any[] = [];
+  if (idsOrdenes.length > 0) {
+    const { data: paymentsData } = await supabase
+      .from('sales_order_payments')
+      .select('payment_method, amount, sales_order_id')
+      .in('sales_order_id', idsOrdenes);
+    
+    payments = paymentsData || [];
+  }
+
+  // Agrupar pagos por método
   const ventasAgrupadas = {
     efectivo: { total: 0, count: 0 },
     qr: { total: 0, count: 0 },
     tarjeta: { total: 0, count: 0 }
   };
 
-  (ventas || []).forEach((venta: any) => {
-    const metodo = venta.payment_method.toLowerCase();
+  // Contadores de órdenes únicas por método (para pagos mixtos)
+  const ordenesContadas = {
+    efectivo: new Set<string>(),
+    qr: new Set<string>(),
+    tarjeta: new Set<string>()
+  };
+
+  payments.forEach((pago: any) => {
+    const metodo = pago.payment_method.toLowerCase();
     if (metodo === 'efectivo') {
-      ventasAgrupadas.efectivo.total += venta.total_amount;
-      ventasAgrupadas.efectivo.count++;
+      ventasAgrupadas.efectivo.total += Number(pago.amount);
+      ordenesContadas.efectivo.add(pago.sales_order_id);
     } else if (metodo === 'qr') {
-      ventasAgrupadas.qr.total += venta.total_amount;
-      ventasAgrupadas.qr.count++;
+      ventasAgrupadas.qr.total += Number(pago.amount);
+      ordenesContadas.qr.add(pago.sales_order_id);
     } else if (metodo === 'tarjeta') {
-      ventasAgrupadas.tarjeta.total += venta.total_amount;
-      ventasAgrupadas.tarjeta.count++;
+      ventasAgrupadas.tarjeta.total += Number(pago.amount);
+      ordenesContadas.tarjeta.add(pago.sales_order_id);
     }
   });
+
+  // Asignar counts (número de órdenes únicas que usaron cada método)
+  ventasAgrupadas.efectivo.count = ordenesContadas.efectivo.size;
+  ventasAgrupadas.qr.count = ordenesContadas.qr.size;
+  ventasAgrupadas.tarjeta.count = ordenesContadas.tarjeta.size;
 
   const cierreConInfo: CierreHistorico = {
     id: cierre.id,
@@ -276,7 +306,7 @@ export const getDetalleCierre = async (cierreId: string): Promise<DetalleCierre>
     cash_withdrawals: cierre.cash_withdrawals,
     difference: cierre.difference,
     notes: cierre.notes,
-    sales_count: (ventas || []).length
+    sales_count: (ordenesDelPeriodo || []).length
   };
 
   return {

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
-import { Shield, CheckCircle, XCircle, DollarSign, Wand2, Package } from 'lucide-react';
+import { Shield, CheckCircle, XCircle, DollarSign, Wand2 } from 'lucide-react';
 import { generarDatosDemo } from '../services/demoService';
 import { Database } from '../types/supabase';
 import { getAllSubscriptionPlans, updateOrganizationPlan, SubscriptionPlan } from '../services/subscriptionService';
@@ -10,43 +10,32 @@ import { getAllSubscriptionPlans, updateOrganizationPlan, SubscriptionPlan } fro
 // Definimos un tipo local para facilitar el manejo de la UI basado en la DB real
 type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
 
+// Tipo para la organización con el plan de suscripción expandido
+type OrganizationWithPlan = OrganizationRow & {
+  subscription_plan?: {
+    id: string;
+    name: string;
+    code: string;
+    monthly_price: number;
+  } | null;
+  subscription_plan_id?: string | null;
+};
+
 // Tu email de Super Admin
 const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com";
 
 export function SuperAdmin() {
   const { user } = useAuth();
-  const [orgs, setOrgs] = useState<OrganizationRow[]>([]);
+  const [orgs, setOrgs] = useState<OrganizationWithPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
-  useEffect(() => {
-    if (user?.email !== SUPER_ADMIN_EMAIL) {
-      setLoading(false);
-      return;
-    }
-    cargarOrganizaciones();
-    cargarPlanes();
-  }, [user]);
-
-  const cargarPlanes = async () => {
+  const cargarPlanes = useCallback(async () => {
     const availablePlans = await getAllSubscriptionPlans();
     setPlans(availablePlans);
-  };
+  }, []);
 
-  const handlePoblarDemo = async (orgId: string, orgName: string) => {
-    if (!window.confirm(`¿Seguro que deseas inyectar datos falsos en "${orgName}"? Esto ensuciará su base de datos.`)) return;
-
-    const toastId = toast.loading("Generando simulación...");
-    try {
-      await generarDatosDemo(orgId);
-      toast.success("¡Datos Demo Cargados!", { id: toastId });
-    } catch (e) {
-      toast.error("Error generando datos", { id: toastId });
-      console.error(e);
-    }
-  };
-
-  const cargarOrganizaciones = async () => {
+  const cargarOrganizaciones = useCallback(async () => {
     setLoading(true);
 
     const { data, error } = await supabase
@@ -66,10 +55,33 @@ export function SuperAdmin() {
       toast.error("Error cargando organizaciones");
       console.error(error);
     } else {
-      setOrgs(data || []);
+      setOrgs((data || []) as OrganizationWithPlan[]);
     }
     setLoading(false);
+  }, []);
+
+
+  useEffect(() => {
+    if (user?.email === SUPER_ADMIN_EMAIL) {
+      cargarOrganizaciones();
+      cargarPlanes();
+    }
+  }, [user, cargarOrganizaciones, cargarPlanes]);
+
+  const handlePoblarDemo = async (orgId: string, orgName: string) => {
+    if (!window.confirm(`¿Seguro que deseas inyectar datos falsos en "${orgName}"? Esto ensuciará su base de datos.`)) return;
+
+    const toastId = toast.loading("Generando simulación...");
+    try {
+      await generarDatosDemo(orgId);
+      toast.success("¡Datos Demo Cargados!", { id: toastId });
+    } catch (e) {
+      toast.error("Error generando datos", { id: toastId });
+      console.error(e);
+    }
   };
+
+
 
   const cambiarPlan = async (orgId: string, planId: string) => {
     const success = await updateOrganizationPlan(orgId, planId);
@@ -170,8 +182,8 @@ export function SuperAdmin() {
                       </select>
                     </td>
                     <td className="p-4 font-mono text-sm text-stone-700">
-                      {(org.subscription_plan as any)?.monthly_price
-                        ? `$${(org.subscription_plan as any).monthly_price}/mes`
+                      {org.subscription_plan?.monthly_price
+                        ? `$${org.subscription_plan.monthly_price}/mes`
                         : '-'}
                     </td>
                     <td className="p-4 font-mono text-stone-600">

@@ -10,7 +10,8 @@ import {
   getInsumosDisponibles, getRecetaProducto,
   ProductoForm, IngredienteReceta
 } from '../services/productosService';
-import { EmptyState, Button } from '../components/ui';
+import { getInsumosParaEnvases } from '../services/insumosService';
+import { EmptyState } from '../components/ui';
 
 // Categorías Visuales
 const CAT_ICONS: Record<string, any> = {
@@ -19,21 +20,42 @@ const CAT_ICONS: Record<string, any> = {
 
 export function Productos() {
   const { orgId } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [productos, setProductos] = useState<any[]>([]);
-  const [insumos, setInsumos] = useState<any[]>([]); // Lista de insumos disponibles
+  const [productos, setProductos] = useState<Array<{
+    id: string;
+    name: string;
+    sku?: string | null;
+    category: string | null;
+    sale_price: number | null;
+    is_roasted: boolean | null;
+    [key: string]: unknown;
+  }>>([]);
+  const [insumos, setInsumos] = useState<Array<{
+    id: string;
+    name: string;
+    unit_measure: string;
+    [key: string]: unknown;
+  }>>([]); // Lista de insumos disponibles
 
   const [filtro, setFiltro] = useState('');
   const [catFiltro, setCatFiltro] = useState('Todas');
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  
+  // Estado para los envases (contenedores para llevar)
+  const [envases, setEnvases] = useState<Array<{
+    id: string;
+    name: string;
+    current_stock: number;
+  }>>([]);
 
   // Formulario Principal
   const [formData, setFormData] = useState<ProductoForm>({
     name: '', sku: '', sale_price: '', category: 'General',
     is_roasted: false, package_weight_grams: '', stock_inicial: '',
-    receta: []
+    receta: [],
+    container_supply_id: null,
+    takeaway_additional_cost: '0'
   });
 
   // Estado temporal para agregar ingrediente
@@ -43,16 +65,15 @@ export function Productos() {
     if (orgId) {
       cargar();
       getInsumosDisponibles(orgId).then(setInsumos);
+      getInsumosParaEnvases(orgId).then(setEnvases);
     }
   }, [orgId]);
 
   const cargar = async () => {
-    setLoading(true);
     try {
       const data = await getTodosLosProductos(orgId!);
       setProductos(data);
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
   };
 
   const handleSave = async () => {
@@ -86,7 +107,9 @@ export function Productos() {
       is_roasted: p.is_roasted,
       package_weight_grams: p.package_weight_grams || '',
       stock_inicial: '',
-      receta: recetaActual
+      receta: recetaActual,
+      container_supply_id: p.container_supply_id || null,
+      takeaway_additional_cost: p.takeaway_additional_cost || '0'
     });
     setSelectedId(p.id);
     setIsEditing(true);
@@ -96,7 +119,8 @@ export function Productos() {
   const resetForm = () => {
     setFormData({
       name: '', sku: '', sale_price: '', category: 'General',
-      is_roasted: false, package_weight_grams: '', stock_inicial: '', receta: []
+      is_roasted: false,  package_weight_grams: '', stock_inicial: '', receta: [],
+      container_supply_id: null, takeaway_additional_cost: '0'
     });
     setNewIngrediente({ id: '', qty: '' });
     setIsEditing(false);
@@ -184,7 +208,7 @@ export function Productos() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtrados.map(p => {
-              const Icon = CAT_ICONS[p.category] || Tag;
+              const Icon = CAT_ICONS[p.category || 'General'] || Tag;
               return (
                 <div key={p.id} className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-smooth group relative flex flex-col justify-between animate-fade-in">
                   <div>
@@ -295,6 +319,53 @@ export function Productos() {
                   )}
                 </div>
               )}
+
+              {/* SECCIÓN ENVASES PARA LLEVAR */}
+              <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                <h4 className="font-bold text-amber-900 mb-3 flex items-center gap-2">
+                  <Package size={16} className="text-amber-600" /> Configuración Para Llevar
+                </h4>
+                <p className="text-xs text-amber-700 mb-4">
+                  Define qué envase se usa y si hay costo adicional (puede ser Bs 0 si ya está incluido en el precio).
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 uppercase">Envase Usado</label>
+                    <select
+                      className="w-full p-2 border border-amber-200 rounded-lg mt-1 bg-white text-sm"
+                      value={formData.container_supply_id || ''}
+                      onChange={e => setFormData({ ...formData, container_supply_id: e.target.value || null })}
+                    >
+                      <option value="">Sin envase (no aplica para llevar)</option>
+                      {envases.map(env => (
+                        <option key={env.id} value={env.id}>
+                          {env.name} (Stock: {env.current_stock})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-amber-600 mt-1">El inventario del envase se descontará automáticamente al vender</p>
+                  </div>
+
+                  {formData.container_supply_id && (
+                    <div>
+                      <label className="text-xs font-bold text-stone-600 uppercase">Costo Adicional por Envase (Bs)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="w-full p-2 border border-amber-200 rounded-lg mt-1 font-bold"
+                        value={formData.takeaway_additional_cost}
+                        onChange={e => setFormData({ ...formData, takeaway_additional_cost: e.target.value })}
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-amber-600 mt-1">
+                        Puede ser Bs 0 si el costo ya está incluido en el precio de venta
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* CHECKBOX CAFÉ TOSTADO */}
               <div className="pt-2 border-t border-stone-100">

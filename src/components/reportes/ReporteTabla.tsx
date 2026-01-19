@@ -82,7 +82,7 @@ export function ReporteTabla({
                         className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors font-medium text-sm"
                     >
                         <Download size={16} />
-                        Exportar CSV
+                        Exportar PDF
                     </button>
                 )}
             </div>

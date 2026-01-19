@@ -1,18 +1,19 @@
-import React from 'react';
 import { type LabReportComplete } from '../types/laboratorio';
-import { Eye, ExternalLink, FileText, Building2, Package, Calendar, Award, CheckCircle2, Clock, FileCheck } from 'lucide-react';
+import { Eye, FileText, Building2, Package, Calendar, Award, CheckCircle2, Clock, FileCheck, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface TablaReportesLaboratorioProps {
     reportes: LabReportComplete[];
     onViewReport: (reportId: string) => void;
+    onDeleteReport?: (reportId: string) => void;
     isLoading?: boolean;
 }
 
 export function TablaReportesLaboratorio({
     reportes,
     onViewReport,
+    onDeleteReport,
     isLoading = false
 }: TablaReportesLaboratorioProps) {
     if (isLoading) {
@@ -35,7 +36,7 @@ export function TablaReportesLaboratorio({
 
     const getStatusBadge = (status: string) => {
         const badges = {
-            draft: { icon: Clock, text: 'Borrador', bg: 'bg-stone-100', text: 'text-stone-700' },
+            draft: { icon: Clock, text: 'Borrador', bg: 'bg-stone-100', textColor: 'text-stone-700' },
             completed: { icon: FileCheck, text: 'Completado', bg: 'bg-blue-100', textColor: 'text-blue-700' },
             approved: { icon: CheckCircle2, text: 'Aprobado', bg: 'bg-emerald-100', textColor: 'text-emerald-700' }
         };
@@ -56,7 +57,7 @@ export function TablaReportesLaboratorio({
         const getColor = () => {
             if (score >= 90) return 'bg-purple-100 text-purple-700';
             if (score >= 85) return 'bg-blue-100 text-blue-700';
-            if (score >= 80) return 'bg-emeraldgreen-100 text-emerald-700';
+            if (score >= 80) return 'bg-emerald-100 text-emerald-700';
             if (score >= 70) return 'bg-amber-100 text-amber-700';
             return 'bg-stone-100 text-stone-700';
         };
@@ -75,7 +76,7 @@ export function TablaReportesLaboratorio({
                 <thead>
                     <tr className="border-b-2 border-stone-200">
                         <th className="text-left p-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Tipo</th>
-                        <th className="text-left p-4 text-xs font-bold text-stone-stone-500 uppercase tracking-wider">Muestra</th>
+                        <th className="text-left p-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Muestra</th>
                         <th className="text-left p-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Fecha</th>
                         <th className="text-left p-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Análisis</th>
                         <th className="text-left p-4 text-xs font-bold text-stone-500 uppercase tracking-wider">Score</th>
@@ -159,16 +160,32 @@ export function TablaReportesLaboratorio({
                             </td>
 
                             <td className="p-4 text-right">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onViewReport(reporte.id);
-                                    }}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm"
-                                >
-                                    <Eye size={16} />
-                                    Ver
-                                </button>
+                                <div className="flex items-center justify-end gap-2">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onViewReport(reporte.id);
+                                        }}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm"
+                                    >
+                                        <Eye size={16} />
+                                        Ver
+                                    </button>
+
+                                    {/* Solo mostrar eliminar para reportes en borrador */}
+                                    {reporte.status === 'draft' && onDeleteReport && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteReport(reporte.id);
+                                            }}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-semibold text-sm border border-red-200"
+                                            title="Eliminar reporte"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
                             </td>
                         </tr>
                     ))}

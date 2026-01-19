@@ -44,6 +44,7 @@ export const exportarReporteAPDF = (reporte: LabReportComplete) => {
         margin: { left: 14, right: 14 }
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     yPos = (pdf as any).lastAutoTable.finalY + 10;
 
     // Análisis Físico
@@ -74,6 +75,7 @@ export const exportarReporteAPDF = (reporte: LabReportComplete) => {
             margin: { left: 14, right: 14 }
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
 
@@ -123,6 +125,7 @@ export const exportarReporteAPDF = (reporte: LabReportComplete) => {
             margin: { left: 14, right: 14 }
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         yPos = (pdf as any).lastAutoTable.finalY + 10;
 
         // Descriptores
@@ -152,6 +155,7 @@ export const exportarReporteAPDF = (reporte: LabReportComplete) => {
     }
 
     // Footer
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pageCount = (pdf as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);

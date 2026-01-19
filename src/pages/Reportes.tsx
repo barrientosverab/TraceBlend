@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { Link } from 'react-router-dom';
 import { FiltrosReporte, TipoReporte } from '../components/reportes/FiltrosReporte';
 import { ReporteTabla } from '../components/reportes/ReporteTabla';
 import { TendenciasChart } from '../components/reportes/TendenciasChart';
@@ -9,7 +10,13 @@ import {
   getProductSeasonality,
   getFinancialComparison
 } from '../services/reportesService';
+import {
+  exportarReporteVentasAPDF,
+  exportarReporteProductosAPDF,
+  exportarReporteGastosAPDF
+} from '../utils/reportesPdfExport';
 import { toast } from 'sonner';
+import { BarChart3, FileText, ExternalLink } from 'lucide-react';
 
 export function Reportes() {
   const { orgId } = useAuth();
@@ -101,26 +108,32 @@ export function Reportes() {
     setDatosGrafica(Object.values(porMes));
   };
 
-  const exportarCSV = () => {
+  const exportarPDF = () => {
     if (datosTabla.length === 0) {
       toast.error('No hay datos para exportar');
       return;
     }
 
-    const headers = Object.keys(datosTabla[0]).join(',');
-    const rows = datosTabla.map(fila =>
-      Object.values(fila).join(',')
-    ).join('\n');
-
-    const csv = `${headers}\n${rows}`;
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte_${tipoReporte}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-
-    toast.success('Reporte exportado');
+    try {
+      switch (tipoReporte) {
+        case 'ventas':
+          exportarReporteVentasAPDF(datosTabla, fechaInicio, fechaFin);
+          break;
+        case 'productos':
+          exportarReporteProductosAPDF(datosTabla);
+          break;
+        case 'gastos':
+          exportarReporteGastosAPDF(datosTabla);
+          break;
+        default:
+          toast.error('Tipo de reporte no soportado');
+          return;
+      }
+      toast.success('Reporte PDF exportado exitosamente');
+    } catch (error) {
+      console.error('Error exportando PDF:', error);
+      toast.error('Error al exportar PDF');
+    }
   };
 
   // Configuración de columnas según tipo de reporte
@@ -179,7 +192,29 @@ export function Reportes() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-stone-800">📊 Reportes y Análisis</h1>
+        <h1 className="text-2xl font-bold text-stone-800 mb-6 flex items-center gap-2">
+          <BarChart3 className="text-emerald-700" /> Reportes y Análisis
+        </h1>
+
+        {/* Link to Daily Sales Report */}
+        <Link
+          to="/reporte-ventas-dia"
+          className="block mb-6 bg-gradient-to-r from-emerald-600 to-emerald-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
+        >
+          <div className="flex items-center justify-between text-white">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl">
+                <FileText size={32} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Reporte de Ventas del Día</h2>
+                <p className="text-emerald-100 text-sm">Ver transacciones detalladas de hoy</p>
+              </div>
+            </div>
+            <ExternalLink size={24} className="text-emerald-200" />
+          </div>
+        </Link>
+
         <p className="text-stone-500 mt-1">
           Genera reportes personalizados y analiza tendencias
         </p>
@@ -217,7 +252,7 @@ export function Reportes() {
           columnas={getColumnas()}
           datos={datosTabla}
           loading={loading}
-          onExportar={exportarCSV}
+          onExportar={exportarPDF}
         />
       )}
 
