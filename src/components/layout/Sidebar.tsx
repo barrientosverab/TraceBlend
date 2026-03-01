@@ -83,7 +83,8 @@ export function Sidebar() {
     }
 
     // Para usuarios normales, verificar si el plan incluye la feature
-    if (feature && !availableFeatures.has(feature)) {
+    // o si se encuentra en un periodo de prueba gratis activo.
+    if (feature && !subscription?.is_trial_active && !availableFeatures.has(feature)) {
       console.log(`[Sidebar] DEBUG - Feature '${feature}' NOT in availableFeatures`);
       return false; // El plan no incluye esta feature
     }

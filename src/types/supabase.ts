@@ -1,8 +1,8 @@
 /**
  * Tipos de la base de datos Supabase — TraceBlend
- * Actualizado: 2026-02-23 (verificado contra BD real)
+ * Actualizado: 2026-03-01 (optimización v2)
  *
- * TABLAS CONFIRMADAS (33):
+ * TABLAS CONFIRMADAS (32):
  * billing_history, cash_closures, cash_openings, clients,
  * cupping_defects, expense_ledger, farms, finished_inventory,
  * fixed_expenses, green_coffee_warehouse, lab_reports,
@@ -12,12 +12,15 @@
  * products, profiles, raw_inventory_batches,
  * roast_batch_inputs, roast_batches, sales_order_items,
  * sales_order_payments, sales_orders, subscription_plan_features,
- * subscription_plans, suppliers, supplies_inventory,
- * supply_movements
+ * subscription_plans, suppliers, supplies_inventory
  *
- * VISTAS ACTIVAS (5):
+ * ELIMINADAS: supply_movements (sin uso)
+ *
+ * VISTAS ACTIVAS (9):
  * organization_subscription_details, v_lab_reports_complete,
- * vw_inventory_status, vw_roast_costs, vw_sales_detailed
+ * vw_inventory_status, vw_roast_costs, vw_sales_detailed,
+ * vw_recent_activity, v_product_seasonality,
+ * v_financial_comparison, v_sales_summary
  */
 
 // ─────────────────────────────────────────────────────
@@ -376,17 +379,8 @@ export interface SuppliesInventory {
     updated_at?: string | null;
 }
 
-export interface SupplyMovement {
-    id: string;
-    organization_id: string;
-    supply_id: string;
-    movement_type: 'purchase' | 'sale' | 'adjustment' | 'waste' | 'return';
-    quantity: number;
-    unit_cost?: number | null;
-    notes?: string | null;
-    created_by?: string | null;
-    created_at?: string | null;
-}
+// supply_movements fue eliminada en la optimización v2 (2026-03-01)
+// La tabla nunca fue integrada en el frontend
 
 // ─────────────────────────────────────────────────────
 // TABLAS — Productos / Ventas
@@ -498,6 +492,7 @@ export interface FixedExpense {
     amount: number;
     category: ExpenseCategory;
     frequency: FrequencyType;
+    cost_center?: 'produccion' | 'ventas_marketing' | 'administracion' | 'otro' | null;
     is_active?: boolean | null;
     organization_id: string;
     created_at?: string | null;
@@ -510,8 +505,49 @@ export interface ExpenseLedger {
     amount_paid: number;
     payment_date: string;
     payment_method?: string | null;
+    cost_center?: 'produccion' | 'ventas_marketing' | 'administracion' | 'otro' | null;
     organization_id: string;
     created_at?: string | null;
+}
+
+export interface MonthlyBudget {
+    id: string;
+    organization_id: string;
+    category: string;             // matches ExpenseCategory values
+    cost_center?: 'produccion' | 'ventas_marketing' | 'administracion' | 'otro' | null;
+    budget_amount: number;
+    month_year: string;           // format: 'YYYY-MM'
+    notes?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+}
+
+export interface AccountsReceivable {
+    id: string;
+    organization_id: string;
+    client_id?: string | null;
+    invoice_number?: string | null;
+    description: string;
+    total_amount: number;
+    paid_amount?: number | null;
+    due_date: string;
+    status: 'pendiente' | 'parcial' | 'pagado' | 'vencido';
+    created_at?: string | null;
+    updated_at?: string | null;
+}
+
+export interface AccountsPayable {
+    id: string;
+    organization_id: string;
+    supplier_id?: string | null;
+    invoice_number?: string | null;
+    description: string;
+    total_amount: number;
+    paid_amount?: number | null;
+    due_date: string;
+    status: 'pendiente' | 'parcial' | 'pagado' | 'vencido';
+    created_at?: string | null;
+    updated_at?: string | null;
 }
 
 export interface CashOpening {

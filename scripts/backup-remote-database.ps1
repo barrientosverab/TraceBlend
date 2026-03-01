@@ -8,7 +8,11 @@
 param(
     [string]$BackupDir = ".\backups",
     [string]$ProjectRef = "",  # Tu project ref de Supabase (ej: abcdefghijklmnop)
+<<<<<<< HEAD
     [switch]$SchemaOnly
+=======
+    [switch]$SchemaOnly = $false
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
 )
 
 # Crear directorio de backups si no existe
@@ -26,7 +30,11 @@ Write-Host "============================================`n" -ForegroundColor Cya
 # Verificar autenticación
 Write-Host "Verificando autenticación de Supabase..." -ForegroundColor Yellow
 try {
+<<<<<<< HEAD
     $authStatus = supabase projects list -ErrorAction SilentlyContinue | Out-String
+=======
+    $authStatus = supabase projects list 2>&1
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
     if ($LASTEXITCODE -ne 0) {
         Write-Host "✗ No estás autenticado en Supabase CLI" -ForegroundColor Red
         Write-Host "`nPara autenticarte, ejecuta:" -ForegroundColor Yellow
@@ -34,8 +42,12 @@ try {
         exit 1
     }
     Write-Host "✓ Autenticado correctamente" -ForegroundColor Green
+<<<<<<< HEAD
 }
 catch {
+=======
+} catch {
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
     Write-Host "✗ Error verificando autenticación: $_" -ForegroundColor Red
     exit 1
 }
@@ -49,8 +61,12 @@ if ([string]::IsNullOrEmpty($ProjectRef)) {
         if ($envContent -match "VITE_SUPABASE_URL=https://([a-z0-9]+).supabase.co") {
             $ProjectRef = $matches[1]
             Write-Host "✓ Project Reference encontrado: $ProjectRef" -ForegroundColor Green
+<<<<<<< HEAD
         }
         else {
+=======
+        } else {
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
             Write-Host "⚠ No se pudo extraer el Project Reference del .env" -ForegroundColor Yellow
         }
     }
@@ -72,8 +88,12 @@ try {
     if ($SchemaOnly) {
         Write-Host "  → Backup solo del esquema (sin datos)..." -ForegroundColor Gray
         supabase db dump --project-ref $ProjectRef --schema public > $backupFile
+<<<<<<< HEAD
     }
     else {
+=======
+    } else {
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
         Write-Host "  → Backup completo (esquema + datos)..." -ForegroundColor Gray
         Write-Host "  ⚠ Este proceso puede tardar varios minutos..." -ForegroundColor Yellow
         
@@ -95,12 +115,19 @@ try {
         Write-Host "`n✓ Backup creado exitosamente!" -ForegroundColor Green
         Write-Host "  📄 Archivo: $backupFile" -ForegroundColor White
         Write-Host "  📊 Tamaño: $([math]::Round($fileSize, 2)) KB" -ForegroundColor White
+<<<<<<< HEAD
     }
     else {
         throw "El archivo de backup no se creó correctamente"
     }
 }
 catch {
+=======
+    } else {
+        throw "El archivo de backup no se creó correctamente"
+    }
+} catch {
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
     Write-Host "`n✗ Error al crear backup: $_" -ForegroundColor Red
     exit 1
 }
@@ -108,11 +135,19 @@ catch {
 # Crear metadata
 $metadataFile = "$backupFile.metadata.json"
 $metadata = @{
+<<<<<<< HEAD
     timestamp    = $timestamp
     date         = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     project_ref  = $ProjectRef
     schema_only  = $SchemaOnly.IsPresent
     backup_type  = "remote"
+=======
+    timestamp = $timestamp
+    date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    project_ref = $ProjectRef
+    schema_only = $SchemaOnly.IsPresent
+    backup_type = "remote"
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
     file_size_kb = [math]::Round((Get-Item $backupFile).Length / 1KB, 2)
 }
 
