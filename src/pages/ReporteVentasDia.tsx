@@ -2,10 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabaseClient';
 import { toast } from 'sonner';
+<<<<<<< HEAD
 import { Calendar, DollarSign, ShoppingCart, TrendingUp, Package, CreditCard, Banknote, ArrowLeft, Download } from 'lucide-react';
 import { Button } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 import { exportarReporteVentasDiaAPDF } from '../utils/reportesPdfExport';
+=======
+import { Calendar, DollarSign, ShoppingCart, TrendingUp, Package, CreditCard, Banknote, ArrowLeft } from 'lucide-react';
+import { Button } from '../components/ui';
+import { useNavigate } from 'react-router-dom';
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
 
 interface VentaDelDia {
     id: string;
@@ -91,6 +97,7 @@ export function ReporteVentasDia() {
         'QR': Package
     };
 
+<<<<<<< HEAD
     const exportarPDF = () => {
         if (ventas.length === 0) {
             toast.error('No hay datos para exportar');
@@ -114,6 +121,8 @@ export function ReporteVentasDia() {
         }
     };
 
+=======
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
     return (
         <div className="max-w-7xl mx-auto p-6">
             {/* Header */}
@@ -126,6 +135,7 @@ export function ReporteVentasDia() {
                     <p className="text-stone-600 mt-2">Resumen detallado de transacciones diarias</p>
                 </div>
 
+<<<<<<< HEAD
                 <div className="flex gap-2">
                     <Button
                         icon={Download}
@@ -143,6 +153,15 @@ export function ReporteVentasDia() {
                         Volver
                     </Button>
                 </div>
+=======
+                <Button
+                    icon={ArrowLeft}
+                    variant="secondary"
+                    onClick={() => navigate('/reportes')}
+                >
+                    Volver a Reportes
+                </Button>
+>>>>>>> 3067637bab77c16f7f409ed4cdb79865a25d2b40
             </div>
 
             {/* Selector de Fecha */}
