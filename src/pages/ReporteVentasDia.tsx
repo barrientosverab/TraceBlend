@@ -1,98 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../services/supabaseClient';
-import { toast } from 'sonner';
+import { useVentasDia } from '../hooks/useVentasDia';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, DollarSign, ShoppingCart, TrendingUp, Package, CreditCard, Banknote, ArrowLeft, Download } from 'lucide-react';
 import { Button } from '../components/ui';
-import { useNavigate } from 'react-router-dom';
 import { exportarReporteVentasDiaAPDF } from '../utils/reportesPdfExport';
+import { toast } from 'sonner';
 
-interface VentaDelDia {
-    id: string;
-    sale_number: string;
-    total_amount: number;
-    payment_method: string;
-    created_at: string;
-    items: {
-        product_name: string;
-        quantity: number;
-        unit_price: number;
-        subtotal: number;
-    }[];
-}
+// Extracción de constantes para evitar re-creado en cada render
+const metodosIconos: Record<string, React.ElementType> = {
+    'Efectivo': Banknote,
+    'Tarjeta': CreditCard,
+    'QR': Package
+};
 
 export function ReporteVentasDia() {
     const { orgId } = useAuth();
     const navigate = useNavigate();
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-    const [ventas, setVentas] = useState<VentaDelDia[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        if (orgId) {
-            cargarVentas();
-        }
-    }, [orgId, fecha]);
-
-    const cargarVentas = async () => {
-        setIsLoading(true);
-        try {
-            const fechaInicio = `${fecha} 00:00:00`;
-            const fechaFin = `${fecha} 23:59:59`;
-
-            const { data, error } = await supabase
-                .from('sales')
-                .select(`
-          id,
-          sale_number,
-          total_amount,
-          payment_method,
-          created_at,
-          sale_items (
-            product_name,
-            quantity,
-            unit_price,
-            subtotal
-          )
-        `)
-                .eq('organization_id', orgId)
-                .gte('created_at', fechaInicio)
-                .lte('created_at', fechaFin)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setVentas(data || []);
-        } catch (error) {
-            console.error('Error cargando ventas:', error);
-            toast.error('Error al cargar ventas del día');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Cálculos de resumen
-    const totalVentas = ventas.reduce((sum, v) => sum + v.total_amount, 0);
-    const totalTransacciones = ventas.length;
-    const ticketPromedio = totalTransacciones > 0 ? totalVentas / totalTransacciones : 0;
-    const totalProductos = ventas.reduce((sum, v) =>
-        sum + v.items.reduce((s, i) => s + i.quantity, 0), 0
-    );
-
-    // Ventas por método de pago
-    const ventasPorMetodo = ventas.reduce((acc: any, v) => {
-        const metodo = v.payment_method || 'Efectivo';
-        acc[metodo] = (acc[metodo] || 0) + v.total_amount;
-        return acc;
-    }, {});
-
-    const metodosIconos: any = {
-        'Efectivo': Banknote,
-        'Tarjeta': CreditCard,
-        'QR': Package
-    };
+    
+    // Separation of Concerns: Todo lo lógico / estado viene del Hook dedicado. El componente solo "Dibuja".
+    const { 
+        ventas, 
+        fecha, 
+        setFecha, 
+        isLoading, 
+        totalVentas, 
+        totalTransacciones, 
+        ticketPromedio, 
+        totalProductos, 
+        ventasPorMetodo 
+    } = useVentasDia(orgId);
 
     const exportarPDF = () => {
-        if (ventas.length === 0) {
+        // Validación Anti Clicks vacíos (Edge Case logic)
+        if (ventas.length === 0 || isLoading) {
             toast.error('No hay datos para exportar');
             return;
         }
@@ -110,9 +51,10 @@ export function ReporteVentasDia() {
             toast.success('Reporte PDF exportado exitosamente');
         } catch (error) {
             console.error('Error exportando PDF:', error);
-            toast.error('Error al exportar PDF');
+            toast.error('Error al exportar el documento PDF.');
         }
     };
+
     return (
         <div className="max-w-7xl mx-auto p-6">
             {/* Header */}
@@ -130,7 +72,7 @@ export function ReporteVentasDia() {
                         icon={Download}
                         variant="primary"
                         onClick={exportarPDF}
-                        disabled={ventas.length === 0}
+                        disabled={ventas.length === 0 || isLoading}
                     >
                         Exportar PDF
                     </Button>
@@ -153,10 +95,12 @@ export function ReporteVentasDia() {
                         type="date"
                         value={fecha}
                         onChange={(e) => setFecha(e.target.value)}
-                        className="px-4 py-2 border-2 border-stone-200 rounded-lg focus:border-emerald-500 outline-none"
+                        className="px-4 py-2 border-2 border-stone-200 rounded-lg focus:border-emerald-500 outline-none disabled:opacity-50"
+                        disabled={isLoading}
                     />
-                    <span className="text-sm text-stone-500">
-                        {new Date(fecha).toLocaleDateString('es-ES', {
+                    <span className="text-sm text-stone-500 capitalize">
+                        {/* Se ancla a las 12 PM UTC para garantizar que el visualizador local imprima el mismo día seleccionado y evitar bugs visuales de huso horario */}
+                        {new Date(`${fecha}T12:00:00.000Z`).toLocaleDateString('es-ES', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -166,7 +110,7 @@ export function ReporteVentasDia() {
                 </div>
             </div>
 
-            {/* Tarjetas de Resumen */}
+            {/* Tarjetas de Resumen Numérico (Memorizadas desde el Hook) */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-6 rounded-xl shadow border border-stone-200">
                     <div className="flex items-center gap-3 mb-2">
@@ -213,11 +157,11 @@ export function ReporteVentasDia() {
             <div className="bg-white p-6 rounded-xl shadow border border-stone-200 mb-6">
                 <h2 className="text-xl font-bold text-stone-800 mb-4">Ventas por Método de Pago</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {Object.entries(ventasPorMetodo).map(([metodo, total]: [string, any]) => {
-                        const Icon = metodosIconos[metodo] || DollarSign;
+                    {Object.entries(ventasPorMetodo).map(([metodo, total]) => {
+                        const IconComponent = metodosIconos[metodo] || DollarSign;
                         return (
                             <div key={metodo} className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg">
-                                <Icon className="text-emerald-600" size={24} />
+                                <IconComponent className="text-emerald-600" size={24} />
                                 <div className="flex-1">
                                     <p className="text-sm font-bold text-stone-600">{metodo}</p>
                                     <p className="text-2xl font-black text-stone-800">Bs {total.toFixed(2)}</p>
@@ -228,19 +172,20 @@ export function ReporteVentasDia() {
                 </div>
             </div>
 
-            {/* Tabla de Transacciones */}
+            {/* Tabla de Resultados */}
             <div className="bg-white rounded-xl shadow border border-stone-200 overflow-hidden">
-                <div className="p-6 border-b border-stone-200">
+                <div className="p-6 border-b border-stone-200 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-stone-800">Detalle de Transacciones</h2>
                 </div>
 
                 {isLoading ? (
-                    <div className="p-12 text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+                    <div className="p-12 text-center flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
+                        <p className="text-stone-500 font-medium">Buscando transacciones...</p>
                     </div>
                 ) : ventas.length === 0 ? (
                     <div className="p-12 text-center text-stone-400">
-                        <p>No hay ventas registradas para esta fecha</p>
+                        <p className="text-lg font-medium">No hay ventas registradas para esta fecha</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -259,6 +204,7 @@ export function ReporteVentasDia() {
                                     <tr key={venta.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
                                         <td className="p-4 font-mono text-sm font-bold text-stone-800">{venta.sale_number}</td>
                                         <td className="p-4 text-sm text-stone-600">
+                                            {/* Hora de registro real */}
                                             {new Date(venta.created_at).toLocaleTimeString('es-ES', {
                                                 hour: '2-digit',
                                                 minute: '2-digit'

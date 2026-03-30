@@ -23,18 +23,20 @@ const MENU_GROUPS = [
   {
     title: 'Producción',
     items: [
-      { path: '/recepcion', icon: Truck, label: 'Recepción MP', roles: ['administrador', 'operador'], feature: 'reception' },
-      { path: '/trilla', icon: Settings, label: 'Trilla', roles: ['administrador', 'operador'], feature: 'milling' },
-      { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'], feature: 'roasting' },
-      { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio', roles: ['administrador', 'laboratorio'], feature: 'laboratory' },
-      { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'], feature: 'packaging' },
+      // OCULTO PARA LANZAMIENTO
+      // { path: '/recepcion', icon: Truck, label: 'Recepción MP', roles: ['administrador', 'operador'], feature: 'reception' },
+      // { path: '/trilla', icon: Settings, label: 'Trilla', roles: ['administrador', 'operador'], feature: 'milling' },
+      // { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'], feature: 'roasting' },
+      // { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio', roles: ['administrador', 'laboratorio'], feature: 'laboratory' },
+      // { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'], feature: 'packaging' },
     ]
   },
   {
     title: 'Gestión',
     items: [
       { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'], feature: 'finance' },
-      { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'], feature: 'inventory' },
+      // OCULTO PARA LANZAMIENTO
+      // { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'], feature: 'inventory' },
       { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'], feature: 'catalog' },
       // { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'], feature: 'projections' }, // OCULTO PARA LANZAMIENTO
     ]
@@ -42,9 +44,11 @@ const MENU_GROUPS = [
   {
     title: 'Director',
     items: [
-      { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['administrador'], feature: 'team' },
+      // OCULTO PARA LANZAMIENTO
+      // { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['administrador'], feature: 'team' },
       { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['administrador', 'vendedor'], feature: 'crm' },
-      { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'], feature: 'suppliers' },
+      // OCULTO PARA LANZAMIENTO
+      // { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'], feature: 'suppliers' },
       { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'], feature: 'reports' },
       // { path: '/promociones', icon: Percent, label: 'Promociones', roles: ['administrador'], feature: 'promotions' }, // OCULTO PARA LANZAMIENTO
     ]
