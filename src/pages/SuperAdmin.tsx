@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 import { Shield, CheckCircle, XCircle, DollarSign, Wand2 } from 'lucide-react';
 import { generarDatosDemo } from '../services/demoService';
-import { Database } from '../types/supabase';
-import { getAllSubscriptionPlans, updateOrganizationPlan, SubscriptionPlan } from '../services/subscriptionService';
+import { Organization } from '../types/supabase';
+// subscriptionService removed for MVP
 
 // Definimos un tipo local para facilitar el manejo de la UI basado en la DB real
-type OrganizationRow = Database['public']['Tables']['organizations']['Row'];
+type OrganizationRow = Organization;
 
 // Tipo para la organización con el plan de suscripción expandido
 type OrganizationWithPlan = OrganizationRow & {
@@ -28,11 +28,11 @@ export function SuperAdmin() {
   const { user } = useAuth();
   const [orgs, setOrgs] = useState<OrganizationWithPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plans, setPlans] = useState<{ id: string; name: string; price: number }[]>([]);
 
   const cargarPlanes = useCallback(async () => {
-    const availablePlans = await getAllSubscriptionPlans();
-    setPlans(availablePlans);
+    const { data: availablePlans } = await supabase.from('subscription_plans').select('id, name, price').order('price'); 
+    setPlans(availablePlans || []);
   }, []);
 
   const cargarOrganizaciones = useCallback(async () => {
@@ -73,7 +73,7 @@ export function SuperAdmin() {
 
     const toastId = toast.loading("Generando simulación...");
     try {
-      await generarDatosDemo(orgId);
+      await generarDatosDemo(orgId, 'placeholder-branch');
       toast.success("¡Datos Demo Cargados!", { id: toastId });
     } catch (e) {
       toast.error("Error generando datos", { id: toastId });
@@ -84,7 +84,7 @@ export function SuperAdmin() {
 
 
   const cambiarPlan = async (orgId: string, planId: string) => {
-    const success = await updateOrganizationPlan(orgId, planId);
+    const { error: updateError } = await supabase.from('organizations').update({ subscription_plan_id: planId }).eq('id', orgId); const success = !updateError;
 
     if (success) {
       toast.success('Plan actualizado correctamente');
@@ -151,7 +151,7 @@ export function SuperAdmin() {
             <tbody className="divide-y divide-stone-100">
               {orgs.map(org => {
                 // Lógica robusta de fechas
-                const fechaFin = org.next_payment_date || org.trial_ends_at;
+                const fechaFin = org.trial_ends_at;
                 const fechaObj = fechaFin ? new Date(fechaFin) : new Date();
                 const esVencido = fechaObj < new Date();
 

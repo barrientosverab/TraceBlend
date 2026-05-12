@@ -1,34 +1,24 @@
 import { supabase } from './supabaseClient';
-import { Database } from '../types/supabase';
 
-// Tipos para facilitar el uso en la UI
-export interface RecetaItem {
-  id: string;
+interface RecetaItem {
   supply_id: string;
+  supply_name?: string;
+  unit_measure?: string;
+  unit_cost?: number;
   quantity_required: number;
-  // Datos del insumo (Join)
-  insumo_nombre: string;
-  insumo_medida: string;
-  insumo_costo: number;
 }
 
-export interface ProductoConReceta {
-  id: string;
-  name: string;
-  sale_price: number;
-  costo_estimado: number; // Suma de costos de ingredientes
-}
-
-// 1. Obtener productos con su costo calculado
-export const getProductosParaRecetas = async (orgId: string): Promise<ProductoConReceta[]> => {
-  // Traemos productos y sus recetas
-  const { data: productos, error } = await (supabase as any)
+/**
+ * Obtener productos con sus recetas expandidas (costos de insumos)
+ */
+export const getProductosParaRecetas = async (orgId: string) => {
+  const { data: productos, error } = await supabase
     .from('products')
     .select(`
-      id, name, sale_price,
+      id, name, sale_price, is_active, category_id,
       product_recipes (
-        quantity_required,
-        supplies_inventory ( unit_cost )
+        id, supply_id, quantity_required, condition,
+        supplies ( name, unit_measure, unit_cost )
       )
     `)
     .eq('organization_id', orgId)
@@ -37,68 +27,75 @@ export const getProductosParaRecetas = async (orgId: string): Promise<ProductoCo
 
   if (error) throw error;
 
-  // Calculamos el costo total sumando (cantidad * costo_unitario) de cada ingrediente
   return (productos || []).map((p: any) => {
-    const costoTotal = p.product_recipes?.reduce((sum: number, r: any) => {
-      const cantidad = r.quantity_required || 0;
-      const costoUnitario = r.supplies_inventory?.unit_cost || 0;
-      return sum + (cantidad * costoUnitario);
+    const recetas = p.product_recipes || [];
+    const costoTotal = recetas.reduce((sum: number, r: any) => {
+      const costoInsumo = (r.supplies?.unit_cost || 0) * (r.quantity_required || 0);
+      return sum + costoInsumo;
     }, 0);
 
     return {
       id: p.id,
       name: p.name,
       sale_price: p.sale_price || 0,
-      costo_estimado: costoTotal
+      category_id: p.category_id,
+      costo_receta: costoTotal,
+      margen: p.sale_price ? ((p.sale_price - costoTotal) / p.sale_price * 100) : 0,
+      recetas: recetas.map((r: any) => ({
+        id: r.id,
+        supply_id: r.supply_id,
+        supply_name: r.supplies?.name || 'Insumo',
+        unit_measure: r.supplies?.unit_measure || 'und',
+        unit_cost: r.supplies?.unit_cost || 0,
+        quantity_required: r.quantity_required,
+        condition: r.condition || 'always',
+        costo_linea: (r.supplies?.unit_cost || 0) * (r.quantity_required || 0)
+      }))
     };
   });
 };
 
-// 2. Obtener ingredientes de un producto específico
-export const getIngredientesProducto = async (productId: string): Promise<RecetaItem[]> => {
-  const { data, error } = await (supabase as any)
-    .from('product_recipes')
-    .select(`
-      id, supply_id, quantity_required,
-      supplies_inventory ( name, unit_measure, unit_cost )
-    `)
-    .eq('product_id', productId);
-
-  if (error) throw error;
-
-  return (data || []).map((r: any) => ({
-    id: r.id,
-    supply_id: r.supply_id,
-    quantity_required: r.quantity_required,
-    insumo_nombre: r.supplies_inventory?.name || 'Desconocido',
-    insumo_medida: r.supplies_inventory?.unit_measure || '',
-    insumo_costo: r.supplies_inventory?.unit_cost || 0
-  }));
-};
-
-// 3. Agregar Ingrediente
-export const agregarIngrediente = async (productId: string, supplyId: string, cantidad: number, condicion: 'always' | 'takeaway' | 'dine_in' = 'always') => {
-  const { data, error } = await supabase
-    .from('product_recipes')
-    .insert([{
-      product_id: productId,
-      supply_id: supplyId,
-      quantity_required: cantidad,
-      condition: condicion
-    }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
-
-// 4. Eliminar Ingrediente
-export const eliminarIngrediente = async (recetaId: string) => {
-  const { error } = await supabase
+/**
+ * Guardar recetas de un producto (reemplaza todas las existentes)
+ */
+export const guardarRecetas = async (productId: string, items: RecetaItem[], _orgId: string) => {
+  // 1. Eliminar recetas existentes
+  const { error: deleteError } = await supabase
     .from('product_recipes')
     .delete()
-    .eq('id', recetaId);
-  
+    .eq('product_id', productId);
+
+  if (deleteError) throw deleteError;
+
+  // 2. Insertar nuevas recetas
+  if (items.length > 0) {
+    const recetas = items.map(item => ({
+      product_id: productId,
+      supply_id: item.supply_id,
+      quantity_required: item.quantity_required,
+    }));
+
+    const { error: insertError } = await supabase
+      .from('product_recipes')
+      .insert(recetas);
+
+    if (insertError) throw insertError;
+  }
+
+  return true;
+};
+
+/**
+ * Obtener solo los insumos disponibles (para el select de recetas)
+ */
+export const getInsumosParaRecetas = async (orgId: string) => {
+  const { data, error } = await supabase
+    .from('supplies')
+    .select('id, name, unit_measure, unit_cost')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('name');
+
   if (error) throw error;
+  return data || [];
 };

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { FiltrosReporte, TipoReporte } from '../components/reportes/FiltrosReporte';
-import { ReporteTabla } from '../components/reportes/ReporteTabla';
+import { ReporteTabla, Column } from '../components/reportes/ReporteTabla';
 import { TendenciasChart } from '../components/reportes/TendenciasChart';
 import {
   getSalesReport,
@@ -137,7 +137,7 @@ export function Reportes() {
   };
 
   // Configuración de columnas según tipo de reporte
-  const getColumnas = () => {
+  const getColumnas = (): Column[] => {
     switch (tipoReporte) {
       case 'ventas':
         return [

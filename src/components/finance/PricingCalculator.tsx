@@ -1,23 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2, Calculator, Settings, PieChart as PieChartIcon } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 const ingredientSchema = z.object({
     name: z.string().min(1, 'Requerido'),
     type: z.enum(['peso', 'volumen', 'unidad']),
     quantity: z.number().min(0.0001, 'Debe ser > 0'),
     costPrice: z.number().min(0, 'Costo inválido'),
-    merma: z.number().min(0).max(99).default(0),
+    merma: z.number().min(0).max(99),
 });
 
 const recipeSchema = z.object({
     productName: z.string().min(1, 'Nombre requerido'),
     sellingPrice: z.number().min(0),
     ingredients: z.array(ingredientSchema),
-    overhead: z.number().min(0).default(0),
+    overhead: z.number().min(0),
+    laborMinutes: z.number().min(0).optional(),
+    laborRatePerMinute: z.number().min(0).optional(),
 });
 
 type RecipeForm = z.infer<typeof recipeSchema>;
@@ -25,10 +27,9 @@ type RecipeForm = z.infer<typeof recipeSchema>;
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#ef4444'];
 const PROFIT_COLOR = '#10b981'; // Emerald
 const OVERHEAD_COLOR = '#94a3b8'; // Slate
-const LOSS_COLOR = '#ef4444'; // Red
 
 export function PricingCalculator() {
-    const { register, control, watch, handleSubmit, formState: { errors } } = useForm<RecipeForm>({
+    const { register, control, watch, formState: { errors } } = useForm<RecipeForm>({
         resolver: zodResolver(recipeSchema),
         defaultValues: {
             productName: '',
@@ -273,7 +274,7 @@ export function PricingCalculator() {
                                     })}
                                 </Pie>
                                 <Tooltip
-                                    formatter={(value: number) => [`Bs ${value.toFixed(2)}`, 'Costo/Ganancia']}
+                                    formatter={(value: any) => [`Bs ${Number(value).toFixed(2)}`, 'Monto']}
                                     contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #44403c', borderRadius: '8px', color: '#fff' }}
                                 />
                             </PieChart>

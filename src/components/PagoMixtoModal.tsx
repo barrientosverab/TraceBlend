@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, AlertCircle, CheckCircle, Banknote, QrCode, CreditCard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Plus, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { Payment, PaymentMethod, validatePayments } from '../types/payments';
 
 interface PagoMixtoModalProps {
@@ -10,7 +10,7 @@ interface PagoMixtoModalProps {
 
 export function PagoMixtoModal({ totalAPagar, onConfirm, onCancel }: PagoMixtoModalProps) {
   const [payments, setPayments] = useState<Payment[]>([
-    { method: 'Efectivo', amount: 0 }
+    { method: 'cash', amount: 0 }
   ]);
 
   const validation = validatePayments(payments, totalAPagar);
@@ -28,7 +28,7 @@ export function PagoMixtoModal({ totalAPagar, onConfirm, onCancel }: PagoMixtoMo
   }, [validation.isValid]);
 
   const agregarMetodo = () => {
-    setPayments([...payments, { method: 'Efectivo', amount: 0 }]);
+    setPayments([...payments, { method: 'cash', amount: 0 }]);
   };
 
   const eliminarPago = (index: number) => {
@@ -62,13 +62,7 @@ export function PagoMixtoModal({ totalAPagar, onConfirm, onCancel }: PagoMixtoMo
     }
   };
 
-  const getIconForMethod = (method: PaymentMethod) => {
-    switch (method) {
-      case 'Efectivo': return <Banknote size={16} />;
-      case 'QR': return <QrCode size={16} />;
-      case 'Tarjeta': return <CreditCard size={16} />;
-    }
-  };
+
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -119,7 +113,7 @@ export function PagoMixtoModal({ totalAPagar, onConfirm, onCancel }: PagoMixtoMo
                       onChange={(e) => actualizarMetodo(idx, e.target.value as PaymentMethod)}
                       className="w-full border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white"
                     >
-                      <option value="Efectivo">💵 Efectivo</option>
+                      <option value='cash'>💵 Efectivo</option>
                       <option value="QR">📱 QR</option>
                       <option value="Tarjeta">💳 Tarjeta</option>
                     </select>

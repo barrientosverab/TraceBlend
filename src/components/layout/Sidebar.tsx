@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useSubscriptionAccess } from '../../hooks/useSubscriptionAccess';
 import {
   LayoutDashboard, ShoppingBag, Users, Settings, LogOut,
   Menu, X, Coffee, Calculator, UserPlus,
-  Truck, FlaskConical, Flame, Package, Archive, DollarSign, List, TrendingUp,
-  Shield, Percent
+  Package, Archive, DollarSign, TrendingUp,
+  Shield
 } from 'lucide-react';
 
 const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com";
@@ -16,41 +15,24 @@ const MENU_GROUPS = [
     title: 'Principal',
     items: [
       { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['all'], feature: 'dashboard' },
-      { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['administrador', 'vendedor'], feature: 'pos' },
-      { path: '/cierre-caja', icon: Calculator, label: 'Cierre de Caja', roles: ['administrador', 'vendedor'], feature: 'cash_close' },
-    ]
-  },
-  {
-    title: 'Producción',
-    items: [
-      // OCULTO PARA LANZAMIENTO
-      // { path: '/recepcion', icon: Truck, label: 'Recepción MP', roles: ['administrador', 'operador'], feature: 'reception' },
-      // { path: '/trilla', icon: Settings, label: 'Trilla', roles: ['administrador', 'operador'], feature: 'milling' },
-      // { path: '/tueste', icon: Flame, label: 'Tueste', roles: ['administrador', 'tostador'], feature: 'roasting' },
-      // { path: '/laboratorio', icon: FlaskConical, label: 'Laboratorio', roles: ['administrador', 'laboratorio'], feature: 'laboratory' },
-      // { path: '/empaque', icon: Package, label: 'Empaque', roles: ['administrador', 'operador'], feature: 'packaging' },
+      { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['admin', 'cashier'], feature: 'pos' },
+      { path: '/cierre-caja', icon: Calculator, label: 'Cierre de Caja', roles: ['admin', 'cashier'], feature: 'cash_close' },
     ]
   },
   {
     title: 'Gestión',
     items: [
-      { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['administrador'], feature: 'finance' },
-      // OCULTO PARA LANZAMIENTO
-      // { path: '/insumos', icon: List, label: 'Inventario Insumos', roles: ['administrador'], feature: 'inventory' },
-      { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['administrador'], feature: 'catalog' },
-      // { path: '/proyecciones', icon: TrendingUp, label: 'Simulador ROI', roles: ['administrador'], feature: 'projections' }, // OCULTO PARA LANZAMIENTO
+      { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['admin'], feature: 'finance' },
+      { path: '/punto-equilibrio', icon: TrendingUp, label: 'Punto de Eq.', roles: ['admin'], feature: 'finance' },
+      { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['admin'], feature: 'catalog' },
     ]
   },
   {
     title: 'Director',
     items: [
-      // OCULTO PARA LANZAMIENTO
-      // { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['administrador'], feature: 'team' },
-      { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['administrador', 'vendedor'], feature: 'crm' },
-      // OCULTO PARA LANZAMIENTO
-      // { path: '/proveedores', icon: Truck, label: 'Proveedores', roles: ['administrador'], feature: 'suppliers' },
-      { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['administrador'], feature: 'reports' },
-      // { path: '/promociones', icon: Percent, label: 'Promociones', roles: ['administrador'], feature: 'promotions' }, // OCULTO PARA LANZAMIENTO
+      { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['admin'], feature: 'team' },
+      { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['admin', 'cashier'], feature: 'crm' },
+      { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['admin'], feature: 'reports' },
     ]
   }
 ];
@@ -61,41 +43,18 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const userRole = profile?.role || 'viewer';
 
-  // Obtener información de suscripción (sin feature específica)
-  const { subscription, loading } = useSubscriptionAccess();
-  const availableFeatures = new Set(subscription?.available_features || []);
-
-  // DEBUG: Log subscription data
-  console.log('[Sidebar] DEBUG - Subscription:', subscription);
-  console.log('[Sidebar] DEBUG - Loading:', loading);
-  console.log('[Sidebar] DEBUG - Available Features:', Array.from(availableFeatures));
-  console.log('[Sidebar] DEBUG - User Role:', userRole);
-
   // Verificamos si es Super Admin
   const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
   /**
-   * Verifica si el usuario tiene permiso basado en:
-   * 1. Si es Super Admin → Acceso total (bypass de features)
-   * 2. El plan de suscripción de la organización (features disponibles)
-   * 3. El rol del usuario
+   * MVP: Permiso basado únicamente en roles (admin/cashier/viewer).
+   * Las features del plan se verifican post-MVP via subscription_plan_features.
    */
-  const hasPermission = (roles: string[], feature?: string) => {
-    // Super Admin tiene acceso total sin restricciones
-    if (isSuperAdmin) {
-      return true;
-    }
+  const hasPermission = (roles: string[], _feature?: string) => {
+    if (isSuperAdmin) return true;
 
-    // Para usuarios normales, verificar si el plan incluye la feature
-    // o si se encuentra en un periodo de prueba gratis activo.
-    if (feature && !subscription?.is_trial_active && !availableFeatures.has(feature)) {
-      console.log(`[Sidebar] DEBUG - Feature '${feature}' NOT in availableFeatures`);
-      return false; // El plan no incluye esta feature
-    }
-
-    // Luego verificar el rol del usuario
+    // Verificar el rol del usuario
     const hasRole = roles.includes('all') || roles.includes(userRole);
-    console.log(`[Sidebar] DEBUG - Feature '${feature}' - hasRole: ${hasRole}`);
     return hasRole;
   };
 

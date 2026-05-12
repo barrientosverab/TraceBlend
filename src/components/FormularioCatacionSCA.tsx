@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+﻿import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CuppingAnalysisSchema, type CuppingAnalysisFormData } from '../utils/validationSchemas';
 import { Button } from './ui';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/Card';
-import { Save, Coffee, Award, AlertCircle, X } from 'lucide-react';
+import { Save, Coffee, Award, X } from 'lucide-react';
 
 interface FormularioCatacionSCAProps {
     onSubmit: (data: CuppingAnalysisFormData) => Promise<void>;
@@ -40,25 +40,25 @@ export function FormularioCatacionSCA({
         handleSubmit,
         watch,
         setValue,
-        formState: { errors, isValid }
+        formState: { isValid }
     } = useForm<CuppingAnalysisFormData>({
-        resolver: zodResolver(CuppingAnalysisSchema),
+        resolver: zodResolver(CuppingAnalysisSchema) as any,
         mode: 'onChange',
         defaultValues: {
-            coffee_grams: initialData?.coffee_grams || '8.25',
-            water_ml: initialData?.water_ml || '150',
-            water_temp_celsius: initialData?.water_temp_celsius || '92',
-            cups_evaluated: initialData?.cups_evaluated || '5',
-            fragrance_aroma: initialData?.fragrance_aroma || '7',
-            flavor: initialData?.flavor || '7',
-            aftertaste: initialData?.aftertaste || '7',
-            acidity: initialData?.acidity || '7',
-            body: initialData?.body || '7',
-            balance: initialData?.balance || '7',
-            overall: initialData?.overall || '7',
-            uniformity: initialData?.uniformity || '10',
-            clean_cup: initialData?.clean_cup || '10',
-            sweetness: initialData?.sweetness || '10',
+            coffee_grams: initialData?.coffee_grams ?? 8.25,
+            water_ml: initialData?.water_ml ?? 150,
+            water_temp_celsius: initialData?.water_temp_celsius ?? 92,
+            cups_evaluated: initialData?.cups_evaluated ?? 5,
+            fragrance_aroma: initialData?.fragrance_aroma ?? 7,
+            flavor: initialData?.flavor ?? 7,
+            aftertaste: initialData?.aftertaste ?? 7,
+            acidity: initialData?.acidity ?? 7,
+            body: initialData?.body ?? 7,
+            balance: initialData?.balance ?? 7,
+            overall: initialData?.overall ?? 7,
+            uniformity: initialData?.uniformity ?? 10,
+            clean_cup: initialData?.clean_cup ?? 10,
+            sweetness: initialData?.sweetness ?? 10,
             flavor_descriptors: initialData?.flavor_descriptors || [],
             cupper_notes: initialData?.cupper_notes || ''
         }
@@ -115,7 +115,7 @@ export function FormularioCatacionSCA({
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit as any)}>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">

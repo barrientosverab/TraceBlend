@@ -1,5 +1,4 @@
-import React from 'react';
-import { Lock, Zap, CheckCircle } from 'lucide-react';
+﻿import { Lock, Zap, CheckCircle } from 'lucide-react';
 import { useSubscriptionAccess } from '../../hooks/useSubscriptionAccess';
 import { useAuth } from '../../hooks/useAuth';
 

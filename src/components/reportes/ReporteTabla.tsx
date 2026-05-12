@@ -1,7 +1,6 @@
-import React from 'react';
-import { Download, FileText } from 'lucide-react';
+﻿import { Download, FileText } from 'lucide-react';
 
-interface Column {
+export interface Column {
     key: string;
     label: string;
     formato?: 'numero' | 'moneda' | 'fecha' | 'porcentaje';

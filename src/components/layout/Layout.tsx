@@ -1,5 +1,4 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+﻿import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 
 // 1. Definimos qué propiedades puede recibir el Layout

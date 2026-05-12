@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getDashboardMetrics, DashboardData } from '../services/dashboardService';
 import { StockAlerts } from '../components/StockAlerts';
@@ -7,11 +7,9 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
   Activity, Calendar, ClipboardList
 } from 'lucide-react';
-import { MetricCard } from '../components/ui';
-import { useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
-  const { user, profile, orgId } = useAuth();
+  const { profile, orgId } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -134,7 +132,7 @@ export function Dashboard() {
       <TopProductsRanking days={30} limit={10} />
 
       {/* 5. ACCESOS RÁPIDOS ADMINISTRATIVOS */}
-      {profile?.role === 'administrador' && (
+      {profile?.role === 'admin' && (
         <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
           <h3 className="font-bold text-lg text-stone-800 mb-4">Accesos Rápidos</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

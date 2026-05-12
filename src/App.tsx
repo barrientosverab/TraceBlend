@@ -1,5 +1,4 @@
-import React, { Suspense, lazy } from 'react';
-// CORRECCIÓN: Agregamos 'Outlet' a la lista de imports
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuth } from './hooks/useAuth';
@@ -30,26 +29,16 @@ const CierreCaja = lazy(() => import('./pages/CierreCaja').then(m => ({ default:
 const HistorialCierres = lazy(() => import('./pages/HistorialCierres').then(m => ({ default: m.HistorialCierres })));
 const Clientes = lazy(() => import('./pages/Clientes').then(m => ({ default: m.Clientes })));
 
-// Producción
-const Recepcion = lazy(() => import('./pages/Recepcion').then(m => ({ default: m.Recepcion })));
-const Trilla = lazy(() => import('./pages/Trilla').then(m => ({ default: m.Trilla })));
-const Tueste = lazy(() => import('./pages/Tueste').then(m => ({ default: m.Tueste })));
-const Empaque = lazy(() => import('./pages/Empaque').then(m => ({ default: m.Empaque })));
-const Laboratorio = lazy(() => import('./pages/Laboratorio').then(m => ({ default: m.Laboratorio })));
-const Proveedores = lazy(() => import('./pages/Proveedores').then(m => ({ default: m.Proveedores })));
-
 // Administración & Maestros
 const Usuarios = lazy(() => import('./pages/Usuarios').then(m => ({ default: m.Usuarios })));
 const Productos = lazy(() => import('./pages/Productos').then(m => ({ default: m.Productos })));
 const Reportes = lazy(() => import('./pages/Reportes').then(m => ({ default: m.Reportes })));
 const ReporteVentasDia = lazy(() => import('./pages/ReporteVentasDia').then(m => ({ default: m.ReporteVentasDia })));
-// OCULTO PARA LANZAMIENTO
-// const Proyecciones = lazy(() => import('./pages/Proyecciones').then(m => ({ default: m.Proyecciones })));
-// const Promociones = lazy(() => import('./pages/Promociones').then(m => ({ default: m.Promociones })));
 
 // Finanzas
 const Gastos = lazy(() => import('./pages/Gastos').then(m => ({ default: m.Gastos })));
 const Insumos = lazy(() => import('./pages/Insumos').then(m => ({ default: m.Insumos })));
+const PuntoEquilibrio = lazy(() => import('./pages/PuntoEquilibrio').then(m => ({ default: m.PuntoEquilibrio })));
 
 // Componente de Carga
 const PageLoader = () => (
@@ -68,7 +57,6 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Notificaciones Toast Globales */}
       <Toaster position="top-center" richColors expand={true} style={{ zIndex: 99999 }} />
 
       <Suspense fallback={<PageLoader />}>
@@ -90,16 +78,14 @@ function App() {
           {/* --- RUTAS PRIVADAS (Layout con Sidebar) --- */}
           {isAuthenticated && (
             <>
-              {/* RUTA SUPER ADMIN (Sin bloqueo de pago, para que tú entres siempre) */}
+              {/* SUPER ADMIN */}
               <Route path="/super-admin" element={<Layout><SuperAdmin /></Layout>} />
 
-              {/* RUTA CAMBIAR CONTRASEÑA (Accesible para todos los usuarios autenticados) */}
+              {/* CAMBIAR CONTRASEÑA */}
               <Route path="/cambiar-password" element={<Layout><CambiarPassword /></Layout>} />
 
-              {/* --- ZONA DE CLIENTES (Protegida por Pago) --- */}
-              {/* Aquí usamos Outlet para renderizar las rutas hijas dentro del Guard */}
+              {/* --- ZONA DE CLIENTES (Protegida por Suscripción) --- */}
               <Route element={<SubscriptionGuard><Outlet /></SubscriptionGuard>}>
-                {/* 1. Ruta de Onboarding (Protegida por SetupGuard para redirección inversa) */}
                 <Route path="/onboarding" element={
                   <SetupGuard>
                     <Onboarding />
@@ -109,46 +95,25 @@ function App() {
                 <Route element={<SetupGuard><Layout /></SetupGuard>}>
                   <Route path="/" element={<PermissionGuard feature="dashboard"><Dashboard /></PermissionGuard>} />
 
-                  {/* POS & Caja */}
-                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'vendedor']} />}>
+                  {/* POS & Caja — admin + cashier */}
+                  <Route element={<ProtectedRoute allowedRoles={['admin', 'cashier']} />}>
                     <Route path="/ventas" element={<PermissionGuard feature="pos"><Ventas /></PermissionGuard>} />
                     <Route path="/cierre-caja" element={<PermissionGuard feature="cash_close"><CierreCaja /></PermissionGuard>} />
                     <Route path="/clientes" element={<PermissionGuard feature="crm"><Clientes /></PermissionGuard>} />
                   </Route>
 
-                  {/* Producción */}
-                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'operador', 'tostador']} />}>
-                    <Route path="/recepcion" element={<PermissionGuard feature="reception"><Recepcion /></PermissionGuard>} />
-                    <Route path="/trilla" element={<PermissionGuard feature="milling"><Trilla /></PermissionGuard>} />
-                    <Route path="/empaque" element={<PermissionGuard feature="packaging"><Empaque /></PermissionGuard>} />
-                    <Route path="/proveedores" element={<PermissionGuard feature="suppliers"><Proveedores /></PermissionGuard>} />
-                  </Route>
-
-                  {/* Tueste */}
-                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'tostador']} />}>
-                    <Route path="/tueste" element={<PermissionGuard feature="roasting"><Tueste /></PermissionGuard>} />
-                  </Route>
-
-                  {/* Calidad */}
-                  <Route element={<ProtectedRoute allowedRoles={['administrador', 'laboratorio']} />}>
-                    <Route path="/laboratorio" element={<PermissionGuard feature="laboratory"><Laboratorio /></PermissionGuard>} />
-                  </Route>
-
-                  {/* Administración Avanzada */}
-                  <Route element={<ProtectedRoute allowedRoles={['administrador']} />}>
+                  {/* Administración — admin only */}
+                  <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                     <Route path="/usuarios" element={<PermissionGuard feature="team"><Usuarios /></PermissionGuard>} />
                     <Route path="/productos" element={<PermissionGuard feature="catalog"><Productos /></PermissionGuard>} />
                     <Route path="/reportes" element={<PermissionGuard feature="reports"><Reportes /></PermissionGuard>} />
                     <Route path="/reporte-ventas-dia" element={<PermissionGuard feature="reports"><ReporteVentasDia /></PermissionGuard>} />
-                    {/* OCULTO PARA LANZAMIENTO */}
-                    {/* <Route path="/proyecciones" element={<PermissionGuard feature="projections"><Proyecciones /></PermissionGuard>} /> */}
+                    <Route path="/punto-equilibrio" element={<PermissionGuard feature="finance"><PuntoEquilibrio /></PermissionGuard>} />
                     <Route path="/gastos" element={<PermissionGuard feature="finance"><Gastos /></PermissionGuard>} />
                     <Route path="/insumos" element={<PermissionGuard feature="inventory"><Insumos /></PermissionGuard>} />
-                    {/* OCULTO PARA LANZAMIENTO */}
-                    {/* <Route path="/promociones" element={<PermissionGuard feature="promotions"><Promociones /></PermissionGuard>} /> */}
                     <Route path="/cierres-historico" element={<PermissionGuard feature="cash_close"><HistorialCierres /></PermissionGuard>} />
                   </Route>
-                </Route> {/* Fin del Layout+SetupGuard */}
+                </Route>
 
               </Route>
 

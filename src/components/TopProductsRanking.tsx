@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { TrendingUp, Award, Package, DollarSign } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getTopProducts, TopProduct } from '../services/reportesService';

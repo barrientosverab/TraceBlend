@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+﻿// import { useState } from 'react';
 import { type LabReportComplete } from '../types/laboratorio';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
-import { Button } from './ui';
-import { RadarCatacion } from './RadarCatacion';
+// import { Button } from './ui';
+// import { RadarCatacion } from './RadarCatacion';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { X, Award, Package, Building2 } from 'lucide-react';
 
@@ -107,7 +107,7 @@ export function ComparadorMuestras({ reportes, reportesSeleccionados, onRemove }
                                 {reportesAComparar.map((reporte, idx) => (
                                     <Radar
                                         key={reporte.id}
-                                        name={reporte.sample_type === 'internal' ? reporte.batch_code : reporte.external_client_name}
+                                        name={(reporte.sample_type === 'internal' ? reporte.batch_code : reporte.external_client_name) ?? undefined}
                                         dataKey={`muestra${idx + 1}`}
                                         stroke={colores[idx]}
                                         fill={colores[idx]}

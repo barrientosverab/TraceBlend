@@ -1,14 +1,12 @@
 import { supabase } from './supabaseClient';
-import { Database } from '../types/supabase';
 
-// Extraemos el tipo de fila de 'profiles' directamente de tu archivo generado
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 // Definimos la interfaz de lo que devuelve TU función (mezcla Auth + Base de datos)
 export interface UserProfile {
   id: string;
   email: string | undefined;
   organization_id: string | null;
+  branch_id: string | null;
   role: string | null; // El tipo generado probablemente sea un string o un enum
   first_name: string | null;
 }
@@ -20,7 +18,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
   // Como ya conectamos el cliente, TypeScript sabe que 'profiles' existe
   const { data, error } = await supabase
     .from('profiles')
-    .select('organization_id, role, first_name') // TS validará que estos campos existan
+    .select('organization_id, branch_id, role, first_name') // TS validará que estos campos existan
     .eq('id', user.id)
     .single();
 
@@ -33,6 +31,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     id: user.id, 
     email: user.email,
     organization_id: data.organization_id,
+    branch_id: data.branch_id,
     role: data.role,
     first_name: data.first_name
   };

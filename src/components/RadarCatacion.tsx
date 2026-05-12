@@ -1,5 +1,4 @@
-import React from 'react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+﻿import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 interface RadarCatacionProps {
     data: {
@@ -56,7 +55,8 @@ export function RadarCatacion({ data, title = 'Perfil Sensorial', color = '#10b9
                             borderRadius: '12px',
                             padding: '8px 12px'
                         }}
-                        formatter={(value: number) => [`${value.toFixed(2)}`, 'Puntuación']}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        formatter={((value: unknown) => `${Number(value).toFixed(2)}`) as any}
                     />
                     <Legend
                         wrapperStyle={{ paddingTop: '20px' }}

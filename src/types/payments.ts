@@ -1,18 +1,34 @@
 /**
  * Tipos auxiliares para el sistema de pagos mixtos
+ * Actualizado: 2026-04-30 — alineado con ENUM payment_method_type
  */
 
-export type PaymentMethod = 'Efectivo' | 'QR' | 'Tarjeta';
+export type PaymentMethod = 'cash' | 'card' | 'qr' | 'transfer';
+
+/** Labels en español para mostrar en la UI */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  qr: 'QR',
+  transfer: 'Transferencia',
+};
+
+/** Iconos emoji para reportes */
+export const PAYMENT_METHOD_ICONS: Record<PaymentMethod, string> = {
+  cash: '💵',
+  card: '💳',
+  qr: '📱',
+  transfer: '🏦',
+};
 
 export interface Payment {
   method: PaymentMethod;
   amount: number;
 }
 
-export interface SalesOrderPayment {
+export interface SalePaymentRecord {
   id: string;
-  organization_id: string;
-  sales_order_id: string;
+  sale_id: string;
   payment_method: PaymentMethod;
   amount: number;
   created_at: string;

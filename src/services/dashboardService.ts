@@ -1,6 +1,5 @@
 import { supabase } from './supabaseClient';
-
-export interface DashboardData {
+import { calculateBreakEven } from './breakEvenService';export interface DashboardData {
   ventasHoy: number;
   gastosMes: number;
   ventasMes: number;
@@ -9,6 +8,7 @@ export interface DashboardData {
   alertasStock: any[];
   actividadReciente: any[];
   progresoMeta: number;
+  metaDiaria: number;
 }
 
 export const getDashboardMetrics = async (orgId: string): Promise<DashboardData> => {
@@ -17,53 +17,69 @@ export const getDashboardMetrics = async (orgId: string): Promise<DashboardData>
 
   // 1. VENTAS (Hoy y Mes)
   const { data: ventas } = await supabase
-    .from('sales_orders')
-    .select('total_amount, order_date')
+    .from('sales')
+    .select('total_amount, created_at')
     .eq('organization_id', orgId)
-    .gte('order_date', inicioMes);
+    .eq('status', 'completed')
+    .gte('created_at', inicioMes);
 
-  const ventasHoyArr = ventas?.filter(v => v.order_date && v.order_date.startsWith(hoy)) || [];
+  const ventasHoyArr = ventas?.filter(v => v.created_at && v.created_at.startsWith(hoy)) || [];
 
   const totalVentasHoy = ventasHoyArr.reduce((sum, v) => sum + v.total_amount, 0);
   const totalVentasMes = ventas?.reduce((sum, v) => sum + v.total_amount, 0) || 0;
   const transacciones = ventasHoyArr.length;
 
-  // 2. GASTOS
+  // 2. GASTOS (variables del mes)
   const { data: gastos } = await supabase
-    .from('expense_ledger')
-    .select('amount_paid')
+    .from('expenses')
+    .select('amount')
     .eq('organization_id', orgId)
     .gte('payment_date', inicioMes);
 
-  const totalGastosReales = gastos?.reduce((sum, g) => sum + g.amount_paid, 0) || 0;
+  const totalGastosReales = gastos?.reduce((sum, g) => sum + g.amount, 0) || 0;
 
-  // Meta (Gastos Fijos)
-  const { data: fijos } = await supabase.from('fixed_expenses').select('amount').eq('organization_id', orgId).eq('is_active', true);
-  const metaGastosFijos = fijos?.reduce((sum, f) => sum + f.amount, 0) || 1000;
+  // 3. GASTOS FIJOS: expenses con category type='fixed'
+  const { data: gastosFijos } = await supabase
+    .from('expenses')
+    .select('amount, expense_categories!inner(type)')
+    .eq('organization_id', orgId)
+    .eq('expense_categories.type', 'fixed')
+    .gte('payment_date', inicioMes);
 
-  // 3. ALERTAS DE STOCK — Usa vista vw_inventory_status para query consolidada
+  const metaGastosFijos = gastosFijos?.reduce((sum: number, f: any) => sum + f.amount, 0) || 1000;
+
+  // 4. ALERTAS DE STOCK — usa supply_stock directamente
   const { data: stockAlerts } = await supabase
-    .from('vw_inventory_status')
-    .select('inventory_type, name, current_stock, unit_measure, stock_status')
-    .eq('organization_id', orgId)
-    .in('stock_status', ['critical', 'low'])
-    .limit(10);
+    .from('supply_stock')
+    .select('quantity, min_stock, supplies!inner(name, unit_measure, organization_id)')
+    .eq('supplies.organization_id', orgId)
+    .limit(20);
 
-  const alertas = (stockAlerts || []).map(item => ({
-    tipo: item.inventory_type === 'supply' ? 'insumo' : 'producto',
-    msg: `${item.name} ${item.stock_status === 'critical' ? '⚠️ crítico' : 'bajo'} (${item.current_stock} ${item.unit_measure})`
-  }));
+  const alertas = (stockAlerts || [])
+    .filter((item: any) => item.min_stock && item.quantity <= item.min_stock)
+    .map((item: any) => ({
+      tipo: 'insumo',
+      msg: `${item.supplies?.name} ⚠️ stock bajo (${item.quantity} ${item.supplies?.unit_measure})`
+    }))
+    .slice(0, 10);
 
-  // 4. ACTIVIDAD RECIENTE — Usa vista vw_recent_activity
-  const { data: recentActivity } = await supabase
-    .from('vw_recent_activity')
-    .select('activity_type, description, activity_date')
+  // 5. ACTIVIDAD RECIENTE — últimas 8 ventas como aproximación
+  const { data: recentSales } = await supabase
+    .from('sales')
+    .select('id, total_amount, created_at, status')
     .eq('organization_id', orgId)
-    .order('activity_date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(8);
 
-  // 5. CÁLCULOS FINALES
-  const metaDiaria = metaGastosFijos / 30;
+  const actividadReciente = (recentSales || []).map(s => ({
+    activity_type: 'sale',
+    description: `Venta por Bs ${s.total_amount.toFixed(2)}`,
+    activity_date: s.created_at
+  }));
+
+  // 6. CÁLCULOS FINALES
+  const breakEven = await calculateBreakEven(orgId);
+  const metaDiaria = breakEven.metaVentasDia > 0 ? breakEven.metaVentasDia : (metaGastosFijos / 30);
   const progreso = metaDiaria > 0 ? (totalVentasHoy / metaDiaria) * 100 : 0;
 
   return {
@@ -73,7 +89,8 @@ export const getDashboardMetrics = async (orgId: string): Promise<DashboardData>
     transaccionesHoy: transacciones,
     ticketPromedio: transacciones > 0 ? totalVentasHoy / transacciones : 0,
     alertasStock: alertas,
-    actividadReciente: recentActivity || [],
-    progresoMeta: Math.min(progreso, 100)
+    actividadReciente,
+    progresoMeta: Math.min(progreso, 100),
+    metaDiaria: metaDiaria
   };
 };

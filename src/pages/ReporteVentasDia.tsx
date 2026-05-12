@@ -1,5 +1,4 @@
-import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+﻿import { useAuth } from '../hooks/useAuth';
 import { useVentasDia } from '../hooks/useVentasDia';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, DollarSign, ShoppingCart, TrendingUp, Package, CreditCard, Banknote, ArrowLeft, Download } from 'lucide-react';

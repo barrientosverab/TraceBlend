@@ -38,7 +38,7 @@ export function Registro() {
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: 'administrador',
+            role: 'admin',
             org_name: formData.orgName,
             tax_id: formData.nit
           }

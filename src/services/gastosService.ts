@@ -1,35 +1,17 @@
 import { supabase } from './supabaseClient';
-import { FixedExpense } from '../types/supabase';
 
-// Tipos base inferidos
-type FixedExpenseRow = FixedExpense;
-
-export interface GastoFijoForm {
-  name: string;
-  amount: number | string;
-  category: string;
-  frequency: string;
-  cost_center: string;
-}
+// ─── Tipos ───
 
 export interface RegistroPagoForm {
-  expense_id?: string;
+  expense_category_id?: string;
   description: string;
-  amount_paid: number | string;
+  amount: number | string;
   payment_date: string;
   payment_method: string;
-  cost_center: string;
-}
-
-export interface MonthlyBudgetForm {
-  category: string;
-  cost_center: string;
-  budget_amount: number | string;
-  month_year: string;
 }
 
 export interface AccountReceivableForm {
-  client_id?: string;
+  customer_id?: string;
   invoice_number?: string;
   description: string;
   total_amount: number | string;
@@ -44,31 +26,83 @@ export interface AccountPayableForm {
   due_date: string;
 }
 
-// 1. Obtener Configuración de Gastos Fijos
-export const getGastosFijos = async (orgId: string): Promise<FixedExpenseRow[]> => {
+export interface HistoricalFinancial {
+  month_year: string;
+  sales: number;
+  expenses: number;
+}
+
+// ─── 1. Categorías de Gastos ───
+
+export const getExpenseCategories = async (orgId: string) => {
   const { data, error } = await supabase
-    .from('fixed_expenses')
+    .from('expense_categories')
     .select('*')
     .eq('organization_id', orgId)
-    .eq('is_active', true)
-    .order('amount', { ascending: false });
+    .order('name');
 
   if (error) throw error;
   return data || [];
 };
 
-// 2. Crear Nuevo Gasto Fijo
-export const crearGastoFijo = async (datos: GastoFijoForm, orgId: string) => {
+/**
+ * Obtener solo categorías fijas (para configuración de gastos fijos)
+ */
+export const getFixedCategories = async (orgId: string) => {
   const { data, error } = await supabase
-    .from('fixed_expenses')
+    .from('expense_categories')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('type', 'fixed')
+    .order('name');
+
+  if (error) throw error;
+  return data || [];
+};
+
+// ─── 2. Gastos Fijos: Expenses con categoría type='fixed' ───
+
+/**
+ * Obtener gastos registrados que son "fijos" (su categoría tiene type='fixed')
+ */
+export const getGastosFijos = async (orgId: string) => {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select(`
+      id, description, amount, payment_date, payment_method,
+      expense_categories!inner (id, name, type)
+    `)
+    .eq('organization_id', orgId)
+    .eq('expense_categories.type', 'fixed')
+    .order('amount', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((e: any) => ({
+    id: e.id,
+    name: e.description,
+    amount: e.amount,
+    category: e.expense_categories?.name || 'General',
+    payment_date: e.payment_date,
+    payment_method: e.payment_method,
+  }));
+};
+
+/**
+ * Crear un gasto fijo (inserta en expenses con una categoría fixed)
+ */
+export const crearGastoFijo = async (
+  datos: { name: string; amount: number | string; category_id: string },
+  orgId: string
+) => {
+  const { data, error } = await supabase
+    .from('expenses')
     .insert([{
       organization_id: orgId,
-      name: datos.name,
+      expense_category_id: datos.category_id,
+      description: datos.name,
       amount: Number(datos.amount),
-      category: datos.category as any, // Casting seguro para enum
-      frequency: datos.frequency as any,
-      cost_center: datos.cost_center as any,
-      is_active: true
+      payment_date: new Date().toISOString().split('T')[0],
     }])
     .select()
     .single();
@@ -77,18 +111,18 @@ export const crearGastoFijo = async (datos: GastoFijoForm, orgId: string) => {
   return data;
 };
 
-// 3. Registrar un Pago Real (Libro Diario)
+// ─── 3. Registrar un Pago Real (Libro Diario) ───
+
 export const registrarPago = async (datos: RegistroPagoForm, orgId: string) => {
   const { data, error } = await supabase
-    .from('expense_ledger')
+    .from('expenses')
     .insert([{
       organization_id: orgId,
-      expense_id: datos.expense_id || null,
+      expense_category_id: datos.expense_category_id || null,
       description: datos.description,
-      amount_paid: Number(datos.amount_paid),
+      amount: Number(datos.amount),
       payment_date: datos.payment_date,
       payment_method: datos.payment_method,
-      cost_center: datos.cost_center as any
     }])
     .select()
     .single();
@@ -97,13 +131,14 @@ export const registrarPago = async (datos: RegistroPagoForm, orgId: string) => {
   return data;
 };
 
-// 4. Ver Historial de Pagos (Tipado manual para el join)
+// ─── 4. Historial de Pagos (Libro Diario) ───
+
 export const getHistorialPagos = async (orgId: string) => {
-  const { data, error } = await (supabase as any)
-    .from('expense_ledger')
+  const { data, error } = await supabase
+    .from('expenses')
     .select(`
-      id, payment_date, description, amount_paid, payment_method, cost_center,
-      fixed_expenses ( name, category, cost_center )
+      id, payment_date, description, amount, payment_method,
+      expense_categories ( name, type )
     `)
     .eq('organization_id', orgId)
     .order('payment_date', { ascending: false })
@@ -115,104 +150,53 @@ export const getHistorialPagos = async (orgId: string) => {
     id: p.id,
     fecha: p.payment_date,
     descripcion: p.description,
-    monto: p.amount_paid,
+    monto: p.amount,
     metodo: p.payment_method,
-    categoria: p.fixed_expenses?.category || 'otros',
-    cost_center: p.cost_center || p.fixed_expenses?.cost_center || 'otro',
-    etiqueta: p.fixed_expenses?.name || 'Gasto Extra'
+    categoria: p.expense_categories?.name || 'otros',
+    tipo: p.expense_categories?.type || 'variable',
+    etiqueta: p.expense_categories?.name || 'Gasto Extra'
   }));
 };
 
-// 5. Eliminar (Soft Delete)
-export const eliminarGastoFijo = async (id: string) => {
+// ─── 5. Eliminar Gasto ───
+
+export const eliminarGasto = async (id: string) => {
   const { error } = await supabase
-    .from('fixed_expenses')
-    .update({ is_active: false })
+    .from('expenses')
+    .delete()
     .eq('id', id);
   if (error) throw error;
 };
 
-// 6. Obtener Ingresos (Ventas) del Mes Actual para el P&L
+// ─── 6. Ingresos del Mes (para P&L) ───
+
 export const getMonthlySales = async (orgId: string) => {
-  // Obtener el primer y último día del mes actual
   const date = new Date();
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
   const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
   const { data, error } = await supabase
-    .from('sales_orders')
-    .select('total_amount, order_date')
+    .from('sales')
+    .select('total_amount, created_at')
     .eq('organization_id', orgId)
-    .eq('status', 'completada')
-    .gte('order_date', firstDay)
-    .lte('order_date', lastDay);
+    .eq('status', 'completed')
+    .gte('created_at', firstDay)
+    .lte('created_at', lastDay);
 
   if (error) throw error;
 
   return (data || []).map((sale: any) => ({
     amount: Number(sale.total_amount),
-    date: sale.order_date
+    date: sale.created_at
   }));
 };
 
-// 7. Obtener Presupuestos del Mes
-export const getMonthlyBudgets = async (orgId: string, monthYear: string) => {
-  const { data, error } = await supabase
-    .from('monthly_budgets')
-    .select('*')
-    .eq('organization_id', orgId)
-    .eq('month_year', monthYear);
+// ─── 7. Cuentas por Cobrar (Accounts Receivable) ───
 
-  if (error) throw error;
-  return data || [];
-};
-
-// 8. Establecer/Actualizar Presupuesto (Upsert no nativo, así que buscamos primero y actualizamos o insertamos)
-export const setMonthlyBudget = async (datos: MonthlyBudgetForm, orgId: string) => {
-  // Check if exists
-  const { data: existing } = await supabase
-    .from('monthly_budgets')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('category', datos.category)
-    .eq('month_year', datos.month_year)
-    .single();
-
-  if (existing) {
-    const { data, error } = await supabase
-      .from('monthly_budgets')
-      .update({
-        budget_amount: Number(datos.budget_amount),
-        cost_center: datos.cost_center,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', existing.id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  } else {
-    const { data, error } = await supabase
-      .from('monthly_budgets')
-      .insert([{
-        organization_id: orgId,
-        category: datos.category,
-        cost_center: datos.cost_center,
-        budget_amount: Number(datos.budget_amount),
-        month_year: datos.month_year
-      }])
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
-};
-
-// 9. Funciones para Cuentas por Cobrar (Accounts Receivable)
 export const getAccountsReceivable = async (orgId: string) => {
   const { data, error } = await supabase
     .from('accounts_receivable')
-    .select('*, clients(business_name)')
+    .select('*, customers(business_name)')
     .eq('organization_id', orgId)
     .order('due_date', { ascending: true });
 
@@ -225,7 +209,7 @@ export const createAccountReceivable = async (datos: AccountReceivableForm, orgI
     .from('accounts_receivable')
     .insert([{
       organization_id: orgId,
-      client_id: datos.client_id || null,
+      customer_id: datos.customer_id || null,
       invoice_number: datos.invoice_number || null,
       description: datos.description,
       total_amount: Number(datos.total_amount),
@@ -255,11 +239,12 @@ export const updateAccountReceivableStatus = async (id: string, status: string, 
   return data;
 };
 
-// 10. Funciones para Cuentas por Pagar (Accounts Payable)
+// ─── 8. Cuentas por Pagar (Accounts Payable) ───
+
 export const getAccountsPayable = async (orgId: string) => {
   const { data, error } = await supabase
     .from('accounts_payable')
-    .select('*, suppliers(business_name)')
+    .select('*')
     .eq('organization_id', orgId)
     .order('due_date', { ascending: true });
 
@@ -272,7 +257,6 @@ export const createAccountPayable = async (datos: AccountPayableForm, orgId: str
     .from('accounts_payable')
     .insert([{
       organization_id: orgId,
-      supplier_id: datos.supplier_id || null,
       invoice_number: datos.invoice_number || null,
       description: datos.description,
       total_amount: Number(datos.total_amount),
@@ -302,12 +286,7 @@ export const updateAccountPayableStatus = async (id: string, status: string, pai
   return data;
 };
 
-// 11. Funciones para Proyecciones y Cash Flow
-export interface HistoricalFinancial {
-  month_year: string;
-  sales: number;
-  expenses: number;
-}
+// ─── 9. Datos Históricos Financieros ───
 
 export const getHistoricalFinancials = async (orgId: string, monthsAgo: number = 6): Promise<HistoricalFinancial[]> => {
   const date = new Date();
@@ -316,14 +295,14 @@ export const getHistoricalFinancials = async (orgId: string, monthsAgo: number =
 
   const [salesReq, expensesReq] = await Promise.all([
     supabase
-      .from('sales_orders')
-      .select('total_amount, order_date')
+      .from('sales')
+      .select('total_amount, created_at')
       .eq('organization_id', orgId)
-      .eq('status', 'completada')
-      .gte('order_date', startDate),
+      .eq('status', 'completed')
+      .gte('created_at', startDate),
     supabase
-      .from('expense_ledger')
-      .select('amount_paid, payment_date')
+      .from('expenses')
+      .select('amount, payment_date')
       .eq('organization_id', orgId)
       .gte('payment_date', startDate)
   ]);
@@ -334,7 +313,7 @@ export const getHistoricalFinancials = async (orgId: string, monthsAgo: number =
   const summaryData: Record<string, HistoricalFinancial> = {};
 
   (salesReq.data || []).forEach(sale => {
-    const period = sale.order_date.substring(0, 7); // YYYY-MM
+    const period = sale.created_at.substring(0, 7); // YYYY-MM
     if (!summaryData[period]) summaryData[period] = { month_year: period, sales: 0, expenses: 0 };
     summaryData[period].sales += Number(sale.total_amount);
   });
@@ -342,11 +321,13 @@ export const getHistoricalFinancials = async (orgId: string, monthsAgo: number =
   (expensesReq.data || []).forEach(exp => {
     const period = exp.payment_date.substring(0, 7);
     if (!summaryData[period]) summaryData[period] = { month_year: period, sales: 0, expenses: 0 };
-    summaryData[period].expenses += Number(exp.amount_paid);
+    summaryData[period].expenses += Number(exp.amount);
   });
 
   return Object.values(summaryData).sort((a, b) => a.month_year.localeCompare(b.month_year));
 };
+
+// ─── 10. Cuentas Pendientes Consolidadas ───
 
 export const getPendingAccounts = async (orgId: string) => {
   const [arReq, apReq] = await Promise.all([

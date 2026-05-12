@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PhysicalAnalysisSchema, type PhysicalAnalysisFormData } from '../utils/validationSchemas';
-import { Input, Button } from './ui';
+import { Button } from './ui';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/Card';
 import { Save, AlertCircle, CheckCircle2, Droplet, Scale, Grid, Bug } from 'lucide-react';
 
@@ -21,10 +20,9 @@ export function FormularioAnalisisFisico({
         register,
         handleSubmit,
         watch,
-        formState: { errors, isValid },
-        setValue
+        formState: { errors, isValid }
     } = useForm<PhysicalAnalysisFormData>({
-        resolver: zodResolver(PhysicalAnalysisSchema),
+        resolver: zodResolver(PhysicalAnalysisSchema) as any,
         mode: 'onChange',
         defaultValues: {
             sample_weight_grams: initialData?.sample_weight_grams || '',
@@ -36,11 +34,11 @@ export function FormularioAnalisisFisico({
             mesh_14: initialData?.mesh_14 || '0',
             base_mesh: initialData?.base_mesh || '0',
             category_1_defects: initialData?.category_1_defects || '0',
-            category_2_defects: initialData?.category_2_defects || '0',
+            category_2_defects: initialData?.category_2_defects || 0,
             defects_notes: initialData?.defects_notes || '',
             color_notes: initialData?.color_notes || '',
             aroma_notes: initialData?.aroma_notes || ''
-        }
+        } as any
     });
 
     // Watch mesh values for auto-calculation
@@ -64,7 +62,7 @@ export function FormularioAnalisisFisico({
     const humidityStatus = humidityValue > 0 ? getHumidityStatus(humidityValue) : null;
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit as any)}>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">

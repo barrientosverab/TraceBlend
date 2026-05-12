@@ -33,17 +33,17 @@ export interface CierreHistorico {
 export interface DetalleCierre {
   cierre: CierreHistorico;
   ventas: {
-    efectivo: { total: number; count: number };
+    cash: { total: number; count: number };
     qr: { total: number; count: number };
-    tarjeta: { total: number; count: number };
+    card: { total: number; count: number };
   };
 }
 
-export const registrarApertura = async (montoInicial: number, orgId: string, userId: string) => {
+export const registrarApertura = async (montoInicial: number, branchId: string, userId: string) => {
   const { data, error } = await supabase
     .from('cash_openings')
     .insert([{
-      organization_id: orgId,
+      branch_id: branchId,
       user_id: userId,
       initial_cash: montoInicial,
       opened_at: new Date().toISOString()
@@ -55,35 +55,83 @@ export const registrarApertura = async (montoInicial: number, orgId: string, use
   return data;
 };
 
-export const verificarEstadoCaja = async (orgId: string, userId: string) => {
-  const { data, error } = await supabase.rpc('get_cash_status', {
-    p_org_id: orgId,
-    p_user_id: userId
-  });
-  if (error) throw error;
-  return data; // { status: 'open' | 'closed', ... }
+export const verificarEstadoCaja = async (branchId: string, userId: string) => {
+  // Buscar apertura no cerrada para esta sucursal/usuario
+  const { data, error } = await supabase
+    .from('cash_openings')
+    .select('id, initial_cash, opened_at, closed')
+    .eq('branch_id', branchId)
+    .eq('user_id', userId)
+    .eq('closed', false)
+    .order('opened_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+
+  if (data) {
+    return { status: 'open', opening_id: data.id, initial_cash: data.initial_cash, opened_at: data.opened_at };
+  }
+  return { status: 'closed' };
 };
 
-export const obtenerResumenCaja = async (orgId: string, userId: string) => {
-  const { data, error } = await supabase.rpc('get_pending_cash_summary', {
-    p_org_id: orgId,
-    p_user_id: userId
+export const obtenerResumenCaja = async (branchId: string, userId: string) => {
+  // Obtener apertura activa
+  const estadoCaja = await verificarEstadoCaja(branchId, userId);
+  if (estadoCaja.status !== 'open') {
+    return { system_cash: 0, system_qr: 0, system_card: 0, initial_cash: 0 };
+  }
+
+  // Obtener ventas desde la apertura
+  const { data: ventas } = await supabase
+    .from('sales')
+    .select('id')
+    .eq('branch_id', branchId)
+    .eq('seller_id', userId)
+    .eq('status', 'completed')
+    .gte('created_at', estadoCaja.opened_at!);
+
+  const saleIds = (ventas || []).map((v: any) => v.id);
+
+  if (saleIds.length === 0) {
+    return { 
+      system_cash: 0, system_qr: 0, system_card: 0, 
+      initial_cash: estadoCaja.initial_cash || 0 
+    };
+  }
+
+  // Obtener pagos agrupados por método
+  const { data: payments } = await supabase
+    .from('sale_payments')
+    .select('payment_method, amount')
+    .in('sale_id', saleIds);
+
+  const resumen = { system_cash: 0, system_qr: 0, system_card: 0, initial_cash: estadoCaja.initial_cash || 0 };
+
+  (payments || []).forEach((p: any) => {
+    switch (p.payment_method) {
+      case 'cash': resumen.system_cash += Number(p.amount); break;
+      case 'qr': resumen.system_qr += Number(p.amount); break;
+      case 'card': resumen.system_card += Number(p.amount); break;
+    }
   });
 
-  if (error) throw error;
-  return data;
+  return resumen;
 };
 
-export const registrarCierre = async (datos: CierreData, orgId: string, userId: string) => {
-  // El total del sistema es el efectivo inicial + ventas efectivo
+export const registrarCierre = async (datos: CierreData, branchId: string, userId: string) => {
   const totalSystem = datos.system_cash + datos.system_qr + datos.system_card;
   const totalDeclared = (datos.declared_cash + datos.cash_withdrawals) + datos.declared_qr + datos.declared_card;
   const difference = totalDeclared - totalSystem;
 
+  // Obtener apertura activa para vincular
+  const estadoCaja = await verificarEstadoCaja(branchId, userId);
+
   const { data, error } = await supabase
     .from('cash_closures')
     .insert([{
-      organization_id: orgId,
+      branch_id: branchId,
+      opening_id: estadoCaja.status === 'open' ? estadoCaja.opening_id : null,
       user_id: userId,
       system_cash: datos.system_cash,
       system_qr: datos.system_qr,
@@ -100,70 +148,65 @@ export const registrarCierre = async (datos: CierreData, orgId: string, userId: 
     .single();
 
   if (error) throw error;
+
+  // Marcar apertura como cerrada
+  if (estadoCaja.status === 'open') {
+    await supabase
+      .from('cash_openings')
+      .update({ closed: true })
+      .eq('id', estadoCaja.opening_id);
+  }
+
   return data;
 };
 
-export const getCierresHistorico = async (orgId: string, filtros?: { fechaDesde?: string; fechaHasta?: string; userId?: string }) => {
+export const getCierresHistorico = async (branchId: string, filtros?: { fechaDesde?: string; fechaHasta?: string; userId?: string }) => {
   let query = supabase
     .from('cash_closures')
     .select(`
-      id,
-      user_id,
-      closed_at,
-      system_cash,
-      system_qr,
-      system_card,
-      declared_cash,
-      declared_qr,
-      declared_card,
-      cash_withdrawals,
-      difference,
-      notes
+      id, user_id, closed_at, opening_id,
+      system_cash, system_qr, system_card,
+      declared_cash, declared_qr, declared_card,
+      cash_withdrawals, difference, notes
     `)
-    .eq('organization_id', orgId)
+    .eq('branch_id', branchId)
     .order('closed_at', { ascending: false });
 
-  // Aplicar filtros opcionales
-  if (filtros?.fechaDesde) {
-    query = query.gte('closed_at', filtros.fechaDesde);
-  }
-  if (filtros?.fechaHasta) {
-    query = query.lte('closed_at', filtros.fechaHasta);
-  }
-  if (filtros?.userId) {
-    query = query.eq('user_id', filtros.userId);
-  }
+  if (filtros?.fechaDesde) query = query.gte('closed_at', filtros.fechaDesde);
+  if (filtros?.fechaHasta) query = query.lte('closed_at', filtros.fechaHasta);
+  if (filtros?.userId) query = query.eq('user_id', filtros.userId);
 
   const { data: cierres, error } = await query;
   if (error) throw error;
 
-  // Obtener información de usuario y apertura para cada cierre
   const cierresConInfo = await Promise.all(
     (cierres || []).map(async (cierre: any) => {
-      // Obtener nombre del usuario
+      // Obtener nombre del usuario desde profiles
       const { data: usuario } = await supabase
-        .from('users')
+        .from('profiles')
         .select('first_name, last_name')
         .eq('id', cierre.user_id)
         .single();
 
-      // Obtener apertura más reciente del usuario antes del cierre
-      const { data: apertura } = await supabase
-        .from('cash_openings')
-        .select('initial_cash, opened_at')
-        .eq('user_id', cierre.user_id)
-        .lte('opened_at', cierre.closed_at)
-        .order('opened_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Obtener apertura vinculada
+      let apertura: any = null;
+      if (cierre.opening_id) {
+        const { data: ap } = await supabase
+          .from('cash_openings')
+          .select('initial_cash, opened_at')
+          .eq('id', cierre.opening_id)
+          .single();
+        apertura = ap;
+      }
 
       // Contar ventas del período
       const { count } = await supabase
-        .from('sales_orders')
+        .from('sales')
         .select('*', { count: 'exact', head: true })
         .eq('seller_id', cierre.user_id)
-        .gte('order_date', apertura?.opened_at || cierre.closed_at)
-        .lte('order_date', cierre.closed_at);
+        .eq('status', 'completed')
+        .gte('created_at', apertura?.opened_at || cierre.closed_at)
+        .lte('created_at', cierre.closed_at);
 
       return {
         id: cierre.id,
@@ -190,22 +233,13 @@ export const getCierresHistorico = async (orgId: string, filtros?: { fechaDesde?
 };
 
 export const getDetalleCierre = async (cierreId: string): Promise<DetalleCierre> => {
-  // Obtener cierre
   const { data: cierre, error: cierreError } = await supabase
     .from('cash_closures')
     .select(`
-      id,
-      user_id,
-      closed_at,
-      system_cash,
-      system_qr,
-      system_card,
-      declared_cash,
-      declared_qr,
-      declared_card,
-      cash_withdrawals,
-      difference,
-      notes
+      id, user_id, closed_at, opening_id,
+      system_cash, system_qr, system_card,
+      declared_cash, declared_qr, declared_card,
+      cash_withdrawals, difference, notes
     `)
     .eq('id', cierreId)
     .single();
@@ -213,82 +247,76 @@ export const getDetalleCierre = async (cierreId: string): Promise<DetalleCierre>
   if (cierreError) throw cierreError;
   if (!cierre) throw new Error('Cierre no encontrado');
 
-  // Obtener usuario
   const { data: usuario } = await supabase
-    .from('users')
+    .from('profiles')
     .select('first_name, last_name')
     .eq('id', cierre.user_id)
     .single();
 
-  // Obtener apertura
-  const { data: apertura } = await supabase
-    .from('cash_openings')
-    .select('initial_cash, opened_at')
-    .eq('user_id', cierre.user_id)
-    .lte('opened_at', cierre.closed_at)
-    .order('opened_at', { ascending: false })
-    .limit(1)
-    .single();
+  let apertura: any = null;
+  if (cierre.opening_id) {
+    const { data: ap } = await supabase
+      .from('cash_openings')
+      .select('initial_cash, opened_at')
+      .eq('id', cierre.opening_id)
+      .single();
+    apertura = ap;
+  }
 
-  // ✅ ACTUALIZADO: Obtener pagos del período desde sales_order_payments
-  // Esto soporta pagos mixtos correctamente
+  // Obtener pagos de ventas del período
   const inicio = apertura?.opened_at || cierre.closed_at;
   const fin = cierre.closed_at;
 
-  // Primero obtenemos las ventas del período
   const { data: ordenesDelPeriodo } = await supabase
-    .from('sales_orders')
+    .from('sales')
     .select('id')
     .eq('seller_id', cierre.user_id)
     .eq('status', 'completed')
-    .gte('order_date', inicio)
-    .lte('order_date', fin);
+    .gte('created_at', inicio)
+    .lte('created_at', fin);
 
   const idsOrdenes = (ordenesDelPeriodo || []).map((o: any) => o.id);
 
-  // Ahora obtenemos los pagos de esas órdenes
   let payments: any[] = [];
   if (idsOrdenes.length > 0) {
     const { data: paymentsData } = await supabase
-      .from('sales_order_payments')
-      .select('payment_method, amount, sales_order_id')
-      .in('sales_order_id', idsOrdenes);
-    
+      .from('sale_payments')
+      .select('payment_method, amount, sale_id')
+      .in('sale_id', idsOrdenes);
+
     payments = paymentsData || [];
   }
 
-  // Agrupar pagos por método
+  // Agrupar pagos por método (usando nuevos valores ENUM)
   const ventasAgrupadas = {
-    efectivo: { total: 0, count: 0 },
+    cash: { total: 0, count: 0 },
     qr: { total: 0, count: 0 },
-    tarjeta: { total: 0, count: 0 }
+    card: { total: 0, count: 0 }
   };
 
-  // Contadores de órdenes únicas por método (para pagos mixtos)
   const ordenesContadas = {
-    efectivo: new Set<string>(),
+    cash: new Set<string>(),
     qr: new Set<string>(),
-    tarjeta: new Set<string>()
+    card: new Set<string>()
   };
 
   payments.forEach((pago: any) => {
-    const metodo = pago.payment_method.toLowerCase();
-    if (metodo === 'efectivo') {
-      ventasAgrupadas.efectivo.total += Number(pago.amount);
-      ordenesContadas.efectivo.add(pago.sales_order_id);
+    const metodo = pago.payment_method as string;
+    if (metodo === 'cash') {
+      ventasAgrupadas.cash.total += Number(pago.amount);
+      ordenesContadas.cash.add(pago.sale_id);
     } else if (metodo === 'qr') {
       ventasAgrupadas.qr.total += Number(pago.amount);
-      ordenesContadas.qr.add(pago.sales_order_id);
-    } else if (metodo === 'tarjeta') {
-      ventasAgrupadas.tarjeta.total += Number(pago.amount);
-      ordenesContadas.tarjeta.add(pago.sales_order_id);
+      ordenesContadas.qr.add(pago.sale_id);
+    } else if (metodo === 'card') {
+      ventasAgrupadas.card.total += Number(pago.amount);
+      ordenesContadas.card.add(pago.sale_id);
     }
   });
 
-  // Asignar counts (número de órdenes únicas que usaron cada método)
-  ventasAgrupadas.efectivo.count = ordenesContadas.efectivo.size;
+  ventasAgrupadas.cash.count = ordenesContadas.cash.size;
   ventasAgrupadas.qr.count = ordenesContadas.qr.size;
-  ventasAgrupadas.tarjeta.count = ordenesContadas.tarjeta.size;
+  ventasAgrupadas.card.count = ordenesContadas.card.size;
 
   const cierreConInfo: CierreHistorico = {
     id: cierre.id,

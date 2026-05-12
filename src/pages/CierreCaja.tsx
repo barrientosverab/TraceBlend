@@ -1,15 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { registrarCierre, obtenerResumenCaja, CierreData } from '../services/cajaService';
 import { toast } from 'sonner';
 import { Calculator, Save, Lock, AlertTriangle, CheckCircle2, TrendingDown } from 'lucide-react';
 
-interface ResumenCajaDB {
-  total_cash: number;
-  total_qr: number;
-  total_card: number;
-  last_closure: string;
-}
 
 export function CierreCaja() {
   const { orgId, user } = useAuth();

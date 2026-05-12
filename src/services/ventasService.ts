@@ -1,10 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Database } from '../types/supabase';
 import { Payment, formatPaymentsForDB } from '../types/payments';
-
-// Definimos los tipos para TypeScript
-type ProductRow = Database['public']['Tables']['products']['Row'];
-type ClientInsert = Database['public']['Tables']['clients']['Insert'];
 
 export interface ItemCarrito {
   id: string;
@@ -20,11 +15,10 @@ export interface ItemCarrito {
 }
 
 export interface DatosVenta {
-  cliente_id: string;
+  customer_id: string;
   carrito: ItemCarrito[];
   total: number;
-  payments: Payment[]; // ✅ NUEVO: Array de pagos mixtos
-  metodoPago?: string; // @deprecated - mantener para compatibilidad
+  payments: Payment[];
   tipoPedido: 'dine_in' | 'takeaway';
 }
 
@@ -35,69 +29,93 @@ export interface ClienteForm {
   telefono?: string;
 }
 
-export const getClientes = async () => {
-  const { data, error } = await supabase.from('clients').select('*').order('business_name');
+export const getClientes = async (orgId: string) => {
+  // Clientes vinculados a esta organización via customer_org_links
+  const { data, error } = await supabase
+    .from('customer_org_links')
+    .select('customer_id, discount_rate, customers(id, business_name, tax_id, phone, email)')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
   if (error) throw error;
-  return data || [];
+
+  return (data || []).map((link: any) => ({
+    id: link.customers?.id,
+    business_name: link.customers?.business_name,
+    tax_id: link.customers?.tax_id,
+    phone: link.customers?.phone,
+    email: link.customers?.email,
+    discount_rate: link.discount_rate || 0,
+  }));
 };
 
 export const crearCliente = async (cliente: ClienteForm, orgId: string) => {
-  const nuevoCliente: ClientInsert = {
-    organization_id: orgId,
-    business_name: cliente.razon_social,
-    tax_id: cliente.nit,
-    email: cliente.email || null,
-    phone: cliente.telefono || null,
-    client_type: 'retail'
-  };
-  const { data, error } = await supabase.from('clients').insert([nuevoCliente]).select().single();
-  if (error) {
-    if (error.code === '23505') throw new Error("Ya existe un cliente con este NIT/CI.");
-    throw error;
+  // 1. Buscar si el cliente ya existe globalmente por NIT
+  const { data: existing } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('tax_id', cliente.nit)
+    .single();
+
+  let customerId: string;
+
+  if (existing) {
+    customerId = existing.id;
+  } else {
+    // 2. Crear cliente global
+    const { data: newCustomer, error } = await supabase
+      .from('customers')
+      .insert([{
+        business_name: cliente.razon_social,
+        tax_id: cliente.nit,
+        email: cliente.email || null,
+        phone: cliente.telefono || null,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') throw new Error("Ya existe un cliente con este NIT/CI.");
+      throw error;
+    }
+    customerId = newCustomer.id;
   }
-  return data;
+
+  // 3. Vincular a la organización
+  const { error: linkError } = await supabase
+    .from('customer_org_links')
+    .insert([{
+      customer_id: customerId,
+      organization_id: orgId,
+      is_active: true,
+    }]);
+
+  if (linkError && linkError.code !== '23505') throw linkError; // ignorar duplicados
+
+  return { id: customerId, business_name: cliente.razon_social, tax_id: cliente.nit };
 };
 
-export const getCatalogoVentas = async () => {
-  const hoy = new Date().toISOString();
+export const getCatalogoVentas = async (orgId: string) => {
   const { data: productos, error } = await supabase
     .from('products')
-    .select(`
-      id, name, sku, sale_price, category, package_weight_grams, is_roasted,
-      finished_inventory ( current_stock ),
-      product_promotions (
-        id, name, discount_percent, is_courtesy, start_date, end_date
-      )
-    `)
-    .eq('is_active', true)
-    .filter('product_promotions.is_active', 'eq', true)
-    .filter('product_promotions.end_date', 'gte', hoy)
-    .filter('product_promotions.start_date', 'lte', hoy);
+    .select(`id, name, sku, sale_price, category_id, package_weight_grams`)
+    .eq('organization_id', orgId)
+    .eq('is_active', true);
 
   if (error) throw error;
 
   return (productos || []).map((p: any) => {
-    const promocionesActivas = p.product_promotions || [];
-    const mejorPromo = promocionesActivas.sort((a: any, b: any) => {
-      const descA = a.is_courtesy ? 100 : a.discount_percent;
-      const descB = b.is_courtesy ? 100 : b.discount_percent;
-      return descB - descA;
-    })[0];
-
     return {
       id: p.id,
       tipo: 'PRODUCTO',
       nombre: p.name,
-      category: p.category,
-      detalle: p.is_roasted ? `SKU: ${p.sku}` : `GRANEL`,
+      category: p.category_id,
+      detalle: p.sku ? `SKU: ${p.sku}` : '',
       precio: p.sale_price,
-      stock: p.finished_inventory?.[0]?.current_stock || 0,
+      stock: 0,
       unidad: 'und',
-      promo_activa: mejorPromo ? {
-        nombre: mejorPromo.name,
-        descuento: mejorPromo.is_courtesy ? 0 : mejorPromo.discount_percent,
-        es_cortesia: mejorPromo.is_courtesy
-      } : null
+      promo_activa: undefined
     };
   });
 };
@@ -107,7 +125,7 @@ export const registrarVenta = async (
   datosVenta: DatosVenta,
   orgId: string,
   userId: string,
-  // Nuevo parámetro: por defecto es 'completed', pero puede ser 'pending'
+  branchId: string,
   status: 'completed' | 'pending' = 'completed'
 ) => {
   // Preparamos los items para enviarlos al SQL
@@ -119,60 +137,58 @@ export const registrarVenta = async (
     discount_val: item.descuento || 0
   }));
 
-  // ✅ Preparar pagos: si viene payments[] se usa, si no, fallback a metodoPago único
+  // Preparar pagos
   const paymentsPayload = datosVenta.payments && datosVenta.payments.length > 0
     ? formatPaymentsForDB(datosVenta.payments)
-    : [{ method: datosVenta.metodoPago || 'Efectivo', amount: datosVenta.total }];
+    : [{ method: 'cash', amount: datosVenta.total }];
 
-  // Llamamos a la función SQL actualizada
-  const { data, error } = await supabase.rpc('registrar_venta_transaccion', {
+  // Llamamos a la función SQL register_sale
+  const { data, error } = await supabase.rpc('register_sale', {
     p_org_id: orgId,
-    p_client_id: datosVenta.cliente_id,
+    p_branch_id: branchId,
+    p_customer_id: datosVenta.customer_id,
     p_seller_id: userId,
     p_total: datosVenta.total,
     p_items: itemsPayload as any,
-    p_payments: paymentsPayload as any, // ✅ NUEVO: Enviamos array de pagos
+    p_payments: paymentsPayload as any,
     p_order_type: datosVenta.tipoPedido,
     p_status: status
   });
 
   if (error) {
-    // Traducimos el error de SQL a algo legible para el usuario
     if (error.message.includes('Stock insuficiente')) throw new Error(error.message);
     throw error;
   }
   return data;
 };
 
-// --- NUEVA FUNCIÓN: RECUPERAR PENDIENTES ---
+// --- RECUPERAR PENDIENTES ---
 export const getPedidosPendientes = async (orgId: string) => {
   const { data, error } = await supabase
-    .from('sales_orders')
-    .select('id, total_amount, order_date, clients(business_name)')
+    .from('sales')
+    .select('id, total_amount, created_at, customers(business_name)')
     .eq('organization_id', orgId)
-    .eq('status', 'pending') // Solo traemos los pendientes
-    .order('order_date', { ascending: false });
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
 
-  // Simplificamos la respuesta para la vista
-  return data.map((d: any) => ({
+  return (data || []).map((d: any) => ({
     ...d,
-    client_name: d.clients?.business_name || 'Cliente Casual'
+    client_name: d.customers?.business_name || 'Cliente Casual'
   }));
 };
 
-// --- FUNCIÓN: OBTENER DETALLE COMPLETO DE PEDIDO PENDIENTE ---
+// --- DETALLE COMPLETO DE PEDIDO PENDIENTE ---
 export const getDetallePedidoPendiente = async (orderId: string) => {
-  // 1. Traer datos del pedido
   const { data: order, error: orderError } = await supabase
-    .from('sales_orders')
+    .from('sales')
     .select(`
       id,
-      client_id,
+      customer_id,
       total_amount,
       order_type,
-      clients (id, business_name, tax_id)
+      customers (id, business_name, tax_id)
     `)
     .eq('id', orderId)
     .eq('status', 'pending')
@@ -181,41 +197,43 @@ export const getDetallePedidoPendiente = async (orderId: string) => {
   if (orderError) throw orderError;
   if (!order) throw new Error("Pedido no encontrado");
 
-  // 2. Traer items del pedido con detalles del producto
   const { data: items, error: itemsError } = await supabase
-    .from('sales_order_items')
+    .from('sale_items')
     .select(`
       id,
       product_id,
       quantity,
       unit_price,
       is_courtesy,
-      products (id, name, sale_price, category)
+      products (id, name, sale_price, category_id)
     `)
-    .eq('sales_order_id', orderId);
+    .eq('sale_id', orderId);
 
   if (itemsError) throw itemsError;
 
   return {
     order,
-    items: (items || []).map(item => ({
-      id: item.product_id,
-      tipo: 'PRODUCTO' as const,
-      nombre: item.products?.name || 'Producto',
-      cantidad: item.quantity,
-      precio: item.products?.sale_price || 0,
-      precio_final: item.unit_price,
-      es_cortesia: item.is_courtesy,
-      descuento: 0, // El descuento ya está aplicado en unit_price
-      category: item.products?.category
-    }))
+    items: (items || []).map(item => {
+      const prod: any = item.products;
+      return {
+        id: item.product_id,
+        tipo: 'PRODUCTO' as const,
+        nombre: prod?.name || 'Producto',
+        cantidad: item.quantity,
+        precio: prod?.sale_price || 0,
+        precio_final: item.unit_price,
+        es_cortesia: item.is_courtesy,
+        descuento: 0,
+        category: prod?.category_id
+      };
+    })
   };
 };
 
-// --- FUNCIÓN: MARCAR PEDIDO COMO COMPLETADO ---
+// --- MARCAR PEDIDO COMO COMPLETADO ---
 export const marcarPedidoComoCompletado = async (orderId: string) => {
   const { error } = await supabase
-    .from('sales_orders')
+    .from('sales')
     .update({ status: 'completed' })
     .eq('id', orderId);
 

@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Package, Plus, Search, Edit2, AlertTriangle, 
-  Trash2, X, Save, Calculator, Calendar, History, ArrowRight 
+  Trash2, X, Calculator, Calendar, History, ArrowRight 
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
-import { getInsumos, crearInsumo, actualizarInsumo, eliminarInsumo, registrarHistorialCompra } from '../services/insumosService';
-import { Database } from '../types/supabase';
+import { getInsumos, crearInsumo, actualizarInsumo } from '../services/insumosService';
 
-type Insumo = Database['public']['Tables']['supplies_inventory']['Row'];
+
+interface Insumo { id: string; name: string; unit_measure: string | null; unit_cost: number; is_active: boolean; current_stock: number; min_stock: number; stock_id: string | null; }
 
 export function Insumos() {
-  const { orgId } = useAuth();
+  const { orgId, branchId } = useAuth();
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('');
@@ -25,7 +25,7 @@ export function Insumos() {
     id: '',
     name: '',
     unit_measure: 'ml',
-    low_stock_threshold: 1000,
+    min_stock: 1000,
     
     // DATOS DE COMPRA (Calculadora)
     presentacion_nombre: 'Unidad', 
@@ -45,7 +45,7 @@ export function Insumos() {
     if (orgId) cargarDatos();
   }, [orgId]);
 
-  // --- CALCULADORA AUTOMÁTICA ---
+  // --- CALCULADORA AUTOM�TICA ---
   useEffect(() => {
     const costo = Number(form.costo_presentacion) || 0;
     const contenido = Number(form.contenido_neto) || 1; 
@@ -74,7 +74,7 @@ export function Insumos() {
     setModoEdicion(false);
     setStockActualBD(0);
     setForm({
-      id: '', name: '', unit_measure: 'ml', low_stock_threshold: 500,
+      id: '', name: '', unit_measure: 'ml', min_stock: 500,
       presentacion_nombre: 'Paquete', contenido_neto: 1000, costo_presentacion: 0, cantidad_comprada: 1,
       fecha_compra: new Date().toISOString().split('T')[0],
       costo_unitario_calculado: 0, stock_calculado: 0
@@ -89,8 +89,8 @@ export function Insumos() {
     setForm({
       id: item.id,
       name: item.name,
-      unit_measure: item.unit_measure,
-      low_stock_threshold: item.low_stock_threshold ?? 0,
+      unit_measure: item.unit_measure || 'und',
+      min_stock: item.min_stock ?? 0,
       
       presentacion_nombre: 'Unidad', // Reseteamos para nueva compra
       contenido_neto: 1, 
@@ -109,8 +109,7 @@ export function Insumos() {
     setLoading(true);
 
     try {
-      const costoTotalCompra = form.costo_presentacion * form.cantidad_comprada;
-      const descripcionHistorial = `Compra: ${form.cantidad_comprada} ${form.presentacion_nombre}(s) de ${form.name}`;
+
 
       if (modoEdicion) {
         // ACTUALIZAR
@@ -121,14 +120,14 @@ export function Insumos() {
         await actualizarInsumo(form.id, {
           name: form.name,
           unit_measure: form.unit_measure,
-          low_stock_threshold: form.low_stock_threshold,
+          min_stock: form.min_stock,
           current_stock: nuevoStockTotal,
           unit_cost: nuevoCosto
         });
 
         // Registrar Historial solo si hubo compra
         if (form.cantidad_comprada > 0) {
-            await registrarHistorialCompra(orgId!, descripcionHistorial, costoTotalCompra, form.fecha_compra);
+            // registrarHistorialCompra removed for MVP - use register_purchase RPC
         }
 
         toast.success(`Stock actualizado. Total: ${nuevoStockTotal} ${form.unit_measure}`);
@@ -139,14 +138,14 @@ export function Insumos() {
           organization_id: orgId!,
           name: form.name,
           unit_measure: form.unit_measure,
-          low_stock_threshold: form.low_stock_threshold,
+          min_stock: form.min_stock,
           current_stock: form.stock_calculado,
           unit_cost: form.costo_unitario_calculado
-        });
+        }, orgId!, branchId || '');
 
         // Registrar Historial Inicial
         if (form.cantidad_comprada > 0) {
-            await registrarHistorialCompra(orgId!, descripcionHistorial, costoTotalCompra, form.fecha_compra);
+            // registrarHistorialCompra removed for MVP - use register_purchase RPC
         }
         
         toast.success("Insumo creado exitosamente");
@@ -202,7 +201,7 @@ export function Insumos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtrados.map(item => {
               const stock = item.current_stock ?? 0;
-              const umbral = item.low_stock_threshold ?? 0;
+              const umbral = item.min_stock ?? 0;
               const isLow = stock <= umbral;
               
               return (
@@ -238,7 +237,7 @@ export function Insumos() {
                           <button onClick={() => abrirModalEditar(item)} className="p-2 text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
                               <Edit2 size={18}/>
                           </button>
-                          <button onClick={() => { if(confirm('¿Eliminar?')) eliminarInsumo(item.id).then(cargarDatos) }} className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <button onClick={() => { if(confirm('�Eliminar?')) actualizarInsumo(item.id, { is_active: false }).then(cargarDatos) }} className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                               <Trash2 size={18}/>
                           </button>
                       </div>
@@ -251,7 +250,7 @@ export function Insumos() {
         )}
       </div>
 
-      {/* --- MODAL REDISEÑADO --- */}
+      {/* --- MODAL REDISE�ADO --- */}
       {showModal && (
         <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-stone-50 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col md:flex-row max-h-[90vh]">
@@ -261,7 +260,7 @@ export function Insumos() {
                 <h3 className="font-bold text-lg text-stone-800 mb-1 flex items-center gap-2">
                     <Package className="text-emerald-600"/> Insumo
                 </h3>
-                <p className="text-xs text-stone-400 mb-6">Información básica del producto.</p>
+                <p className="text-xs text-stone-400 mb-6">Informaci�n b�sica del producto.</p>
                 
                 <div className="space-y-5">
                     <div>
@@ -281,13 +280,13 @@ export function Insumos() {
                             <option value="lt">Litros (l)</option>
                             <option value="und">Unidades (und)</option>
                         </select>
-                        <p className="text-[10px] text-stone-400 mt-1 leading-tight">Define cómo se descontará este insumo en las recetas.</p>
+                        <p className="text-[10px] text-stone-400 mt-1 leading-tight">Define c�mo se descontar� este insumo en las recetas.</p>
                     </div>
 
                     <div>
-                        <label className="text-xs font-bold text-stone-500 uppercase block mb-1">Stock Mínimo (Alerta)</label>
+                        <label className="text-xs font-bold text-stone-500 uppercase block mb-1">Stock M�nimo (Alerta)</label>
                         <input type="number" className="w-full p-3 border border-stone-200 rounded-xl outline-none bg-stone-50 focus:bg-white" 
-                            value={form.low_stock_threshold} onChange={e => setForm({...form, low_stock_threshold: Number(e.target.value)})} />
+                            value={form.min_stock} onChange={e => setForm({...form, min_stock: Number(e.target.value)})} />
                     </div>
 
                     {modoEdicion && (
@@ -329,7 +328,7 @@ export function Insumos() {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-[10px] font-bold text-stone-400 uppercase">Presentación</label>
+                                <label className="text-[10px] font-bold text-stone-400 uppercase">Presentaci�n</label>
                                 <input className="w-full p-2 border rounded-lg text-sm bg-stone-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500" placeholder="Ej: Caja" 
                                     value={form.presentacion_nombre} onChange={e => setForm({...form, presentacion_nombre: e.target.value})} />
                             </div>
@@ -347,7 +346,7 @@ export function Insumos() {
                                     value={form.contenido_neto} onChange={e => setForm({...form, contenido_neto: Number(e.target.value)})} />
                              </div>
                              <div>
-                                <label className="text-[10px] font-bold text-stone-400 uppercase">Costo Presentación</label>
+                                <label className="text-[10px] font-bold text-stone-400 uppercase">Costo Presentaci�n</label>
                                 <div className="relative">
                                     <span className="absolute left-2 top-2 text-stone-400 text-xs font-bold">Bs</span>
                                     <input type="number" className="w-full pl-6 p-2 border rounded-lg text-sm bg-stone-50 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500" placeholder="0.00" 
@@ -381,7 +380,7 @@ export function Insumos() {
                          </div>
                          
                          <div className="mt-4 pt-4 border-t border-stone-600 text-[10px] text-stone-400 flex items-center gap-2">
-                            <History size={12}/> Se registrará en Historial de Gastos
+                            <History size={12}/> Se registrar� en Historial de Gastos
                          </div>
                     </div>
                 </div>

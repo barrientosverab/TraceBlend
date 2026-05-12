@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Package, Search, Plus, Edit2, Tag, Coffee, Box, Utensils,
-  Save, X, DollarSign, Barcode, List, Trash2
+  Save, X, DollarSign, Barcode
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 import {
-  getTodosLosProductos, crearProducto, actualizarProducto,
-  getInsumosDisponibles, getRecetaProducto,
+  getTodosLosProductos, crearProducto, actualizarProducto, getRecetaProducto,
   ProductoForm, IngredienteReceta
 } from '../services/productosService';
-import { getInsumosParaEnvases } from '../services/insumosService';
+
 import { EmptyState } from '../components/ui';
 
 // Categorías Visuales
@@ -24,17 +23,12 @@ export function Productos() {
     id: string;
     name: string;
     sku?: string | null;
-    category: string | null;
+    category_id: string | null;
+    is_roasted?: boolean;
     sale_price: number | null;
-    is_roasted: boolean | null;
     [key: string]: unknown;
   }>>([]);
-  const [insumos, setInsumos] = useState<Array<{
-    id: string;
-    name: string;
-    unit_measure: string;
-    [key: string]: unknown;
-  }>>([]); // Lista de insumos disponibles
+  // Estado de insumos removido (sección de receta oculta en MVP)
 
   const [filtro, setFiltro] = useState('');
   const [catFiltro, setCatFiltro] = useState('Todas');
@@ -42,30 +36,24 @@ export function Productos() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   
-  // Estado para los envases (contenedores para llevar)
-  const [envases, setEnvases] = useState<Array<{
-    id: string;
-    name: string;
-    current_stock: number;
-  }>>([]);
+  // Estado de envases removido (oculto en MVP);
 
   // Formulario Principal
   const [formData, setFormData] = useState<ProductoForm>({
-    name: '', sku: '', sale_price: '', category: 'General',
-    is_roasted: false, package_weight_grams: '', stock_inicial: '',
+    name: '', sku: '', sale_price: '', category_id: 'General',
+    package_weight_grams: '', stock_inicial: '',
     receta: [],
     container_supply_id: null,
     takeaway_additional_cost: '0'
   });
 
   // Estado temporal para agregar ingrediente
-  const [newIngrediente, setNewIngrediente] = useState<{ id: string, qty: string }>({ id: '', qty: '' });
+  const [_newIngrediente, setNewIngrediente] = useState<{ id: string, qty: string }>({ id: '', qty: '' });
 
   useEffect(() => {
     if (orgId) {
       cargar();
-      getInsumosDisponibles(orgId).then(setInsumos);
-      getInsumosParaEnvases(orgId).then(setEnvases);
+      // getInsumosParaEnvases removido (oculto en MVP)
     }
   }, [orgId]);
 
@@ -103,8 +91,7 @@ export function Productos() {
       name: p.name,
       sku: p.sku || '',
       sale_price: p.sale_price,
-      category: p.category || 'General',
-      is_roasted: p.is_roasted,
+      category_id: p.category_id || 'General',
       package_weight_grams: p.package_weight_grams || '',
       stock_inicial: '',
       receta: recetaActual,
@@ -118,8 +105,8 @@ export function Productos() {
 
   const resetForm = () => {
     setFormData({
-      name: '', sku: '', sale_price: '', category: 'General',
-      is_roasted: false,  package_weight_grams: '', stock_inicial: '', receta: [],
+      name: '', sku: '', sale_price: '', category_id: 'General',
+      package_weight_grams: '', stock_inicial: '', receta: [],
       container_supply_id: null, takeaway_additional_cost: '0'
     });
     setNewIngrediente({ id: '', qty: '' });
@@ -127,36 +114,15 @@ export function Productos() {
     setSelectedId(null);
   };
 
-  // --- Helpers de Receta ---
-  const agregarIngrediente = () => {
-    if (!newIngrediente.id || !newIngrediente.qty) return;
-    const insumoReal = insumos.find(i => i.id === newIngrediente.id);
-    if (!insumoReal) return;
-
-    const item: IngredienteReceta = {
-      supply_id: newIngrediente.id,
-      quantity: Number(newIngrediente.qty),
-      nombre_insumo: insumoReal.name,
-      unidad: insumoReal.unit_measure
-    };
-
-    setFormData({ ...formData, receta: [...(formData.receta || []), item] });
-    setNewIngrediente({ id: '', qty: '' });
-  };
-
-  const quitarIngrediente = (index: number) => {
-    const nuevaReceta = [...(formData.receta || [])];
-    nuevaReceta.splice(index, 1);
-    setFormData({ ...formData, receta: nuevaReceta });
-  };
+  // agregarIngrediente / quitarIngrediente - ocultos en MVP
 
   // Filtrado
   const filtrados = productos.filter(p => {
     const matchText = p.name.toLowerCase().includes(filtro.toLowerCase()) || p.sku?.toLowerCase().includes(filtro.toLowerCase());
-    const matchCat = catFiltro === 'Todas' || p.category === catFiltro;
+    const matchCat = catFiltro === 'Todas' || p.category_id === catFiltro;
     return matchText && matchCat;
   });
-  const categoriasUnicas = ['Todas', ...new Set(productos.map(p => p.category || 'General'))];
+  const categoriasUnicas = ['Todas', ...new Set(productos.map(p => p.category_id || 'General'))];
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-stone-50 overflow-hidden">
@@ -208,7 +174,7 @@ export function Productos() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtrados.map(p => {
-              const Icon = CAT_ICONS[p.category || 'General'] || Tag;
+              const Icon = CAT_ICONS[p.category_id || 'General'] || Tag;
               return (
                 <div key={p.id} className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-smooth group relative flex flex-col justify-between animate-fade-in">
                   <div>
@@ -219,7 +185,7 @@ export function Productos() {
                         </div>
                         <div>
                           <h3 className="font-bold text-stone-800 leading-tight">{p.name}</h3>
-                          <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wider">{p.category}</span>
+                          <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wider">{p.category_id}</span>
                         </div>
                       </div>
                     </div>
@@ -258,7 +224,7 @@ export function Productos() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-stone-400 uppercase">Categoría</label>
-                  <select className="w-full p-2 border rounded-lg mt-1 bg-white" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                  <select className="w-full p-2 border rounded-lg mt-1 bg-white" value={formData.category_id || 'General'} onChange={e => setFormData({ ...formData, category_id: e.target.value })}>
                     <option value="General">General</option>
                     <option value="Café">Bebidas Café</option>
                     <option value="Grano">Grano / Bolsas</option>

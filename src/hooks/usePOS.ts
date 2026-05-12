@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+
 import {
   getClientes, getCatalogoVentas, registrarVenta,
   crearCliente, getPedidosPendientes, getDetallePedidoPendiente,
   marcarPedidoComoCompletado, ItemCarrito
 } from '../services/ventasService';
 import { verificarEstadoCaja } from '../services/cajaService';
-import { getPromociones } from '../services/promocionesService';
+// Promociones removed for MVP
 import { Payment } from '../types/payments';
 
 // --------------------------------------------------------------------------
@@ -66,7 +66,7 @@ export interface CartItem extends ProductoPOS {
 }
 
 export function usePOS() {
-  const { orgId, user } = useAuth();
+  const { orgId, branchId, user } = useAuth();
 
   // Estados Base
   const [loading, setLoading] = useState(false);
@@ -93,23 +93,20 @@ export function usePOS() {
   const cargarTodo = useCallback(async () => {
     try {
       if (!orgId) return;
-      const [prod, cli, promos, pend] = await Promise.all([
-        getCatalogoVentas(),
-        getClientes(),
-        getPromociones(),
+      const [prod, cli, pend] = await Promise.all([
+        getCatalogoVentas(orgId),
+        getClientes(orgId),
         getPedidosPendientes(orgId)
       ]);
       setCatalogo(prod as ProductoPOS[]);
       setClientes(cli as ClientePOS[]);
-      setPendientes(pend as PedidoPendientePOS[]);
+      setPendientes((pend || []) as PedidoPendientePOS[]);
 
       // Edge Case / Logic Validator Fix: 
       // Calculamos el inicio del día local en lugar del UTC mundial. 
       // "format" local soluciona fallos de vigencia de las promos en Bolivia.
-      const hoyLocalFormato = format(new Date(), 'yyyy-MM-dd') + 'T00:00:00.000Z'; 
-      const promosVigentes = (promos as ConvenioPOS[]).filter(
-        p => !p.product_id && p.is_active && new Date(p.end_date) >= new Date(hoyLocalFormato)
-      );
+      // const hoyLocalFormato = format(new Date(), 'yyyy-MM-dd') + 'T00:00:00.000Z'; 
+      const promosVigentes: ConvenioPOS[] = [];
       setConvenios(promosVigentes);
     } catch (e: unknown) {
       console.error(e);
@@ -246,12 +243,12 @@ export function usePOS() {
 
       // El Guardado en sí a Base de datos
       await registrarVenta({
-        cliente_id: clienteSeleccionado!.id,
+        customer_id: clienteSeleccionado!.id,
         carrito: carritoFinal,
         total: totalesTicket.totalFinal,
         payments: paymentsConfirmed,
         tipoPedido: tipoPedido
-      }, orgId, user.id, status);
+      }, orgId, user.id, branchId || '', status);
 
       if (status === 'completed') {
         toast.success("Venta cobrada correctamente");
@@ -296,10 +293,12 @@ export function usePOS() {
     try {
       const { order, items } = await getDetallePedidoPendiente(pedidoId);
       setCarrito(items);
+      // Supabase devuelve `clients` como objeto (no como array) en la cláusula .select()
+      const clienteData = Array.isArray(order.customers) ? order.customers[0] : order.customers;
       setClienteSeleccionado({
-        id: order.clients.id,
-        business_name: order.clients.business_name,
-        tax_id: order.clients.tax_id
+        id: clienteData?.id ?? '',
+        business_name: clienteData?.business_name ?? 'Cliente Casual',
+        tax_id: clienteData?.tax_id ?? ''
       });
       setTipoPedido(order.order_type);
       await marcarPedidoComoCompletado(pedidoId);

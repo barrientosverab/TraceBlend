@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getCierresHistorico, getDetalleCierre, CierreHistorico, DetalleCierre } from '../services/cajaService';
 import { toast } from 'sonner';
@@ -303,10 +303,10 @@ export function HistorialCierres() {
                                                 <p className="text-xs text-emerald-700 font-bold">Efectivo</p>
                                             </div>
                                             <p className="text-lg font-bold font-mono text-emerald-900">
-                                                Bs {cierreSeleccionado.ventas.efectivo.total.toFixed(2)}
+                                                Bs {cierreSeleccionado.ventas.cash.total.toFixed(2)}
                                             </p>
                                             <p className="text-xs text-emerald-600">
-                                                {cierreSeleccionado.ventas.efectivo.count} transacciones
+                                                {cierreSeleccionado.ventas.cash.count} transacciones
                                             </p>
                                         </div>
 
@@ -329,10 +329,10 @@ export function HistorialCierres() {
                                                 <p className="text-xs text-emerald-700 font-bold">Tarjeta</p>
                                             </div>
                                             <p className="text-lg font-bold font-mono text-emerald-900">
-                                                Bs {cierreSeleccionado.ventas.tarjeta.total.toFixed(2)}
+                                                Bs {cierreSeleccionado.ventas.card.total.toFixed(2)}
                                             </p>
                                             <p className="text-xs text-emerald-600">
-                                                {cierreSeleccionado.ventas.tarjeta.count} transacciones
+                                                {cierreSeleccionado.ventas.card.count} transacciones
                                             </p>
                                         </div>
                                     </div>
@@ -342,9 +342,9 @@ export function HistorialCierres() {
                                             <p className="text-sm font-bold text-emerald-800">Total Ventas</p>
                                             <p className="text-xl font-bold font-mono text-emerald-900">
                                                 Bs {(
-                                                    cierreSeleccionado.ventas.efectivo.total +
+                                                    cierreSeleccionado.ventas.cash.total +
                                                     cierreSeleccionado.ventas.qr.total +
-                                                    cierreSeleccionado.ventas.tarjeta.total
+                                                    cierreSeleccionado.ventas.card.total
                                                 ).toFixed(2)}
                                             </p>
                                         </div>

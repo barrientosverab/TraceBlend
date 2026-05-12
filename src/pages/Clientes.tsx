@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getTodosLosClientes, actualizarCliente, toggleEstadoCliente, ClienteForm } from '../services/clientesService';
 import { toast } from 'sonner';
-import { Users, Search, Edit2, CheckCircle, XCircle, Save } from 'lucide-react';
-import { crearCliente } from '../services/ventasService'; // Reutilizamos crearCliente de ventasService o clientesService si lo tienes ahí
+import { Users, Search, Edit2, CheckCircle, XCircle } from 'lucide-react';
+// crearCliente - disponible en ventasService para uso futuro
 
 export function Clientes() {
   const { orgId } = useAuth();
@@ -35,7 +35,7 @@ export function Clientes() {
   const handleSave = async () => {
     if (!editingId) return; // Solo edición por ahora en esta vista rápida
     try {
-      await actualizarCliente(editingId, form);
+      await actualizarCliente(editingId, editingId, form);
       toast.success("Cliente actualizado");
       setEditingId(null);
       cargar();

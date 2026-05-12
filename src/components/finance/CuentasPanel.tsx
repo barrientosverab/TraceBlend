@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'sonner';
 import { 
@@ -32,7 +32,7 @@ export function CuentasPanel() {
   // Formularios
   const [showFormRow, setShowFormRow] = useState(false);
   const [nuevoCobro, setNuevoCobro] = useState<AccountReceivableForm>({
-    client_id: '',
+    customer_id: '',
     invoice_number: '',
     description: '',
     total_amount: '',
@@ -73,7 +73,7 @@ export function CuentasPanel() {
   const cargarEntidades = async () => {
     try {
       const [resClientes, resProveedores] = await Promise.all([
-        supabase.from('clients').select('id, business_name').eq('organization_id', orgId!).order('business_name'),
+        supabase.from('customers').select('id, business_name').eq('organization_id', orgId!).order('business_name'),
         supabase.from('suppliers').select('id, name').eq('organization_id', orgId!).order('name')
       ]);
       
@@ -95,7 +95,7 @@ export function CuentasPanel() {
       toast.success('Cuenta por cobrar registrada');
       setShowFormRow(false);
       setNuevoCobro({
-        client_id: '', invoice_number: '', description: '', total_amount: '', due_date: new Date().toISOString().split('T')[0]
+        customer_id: '', invoice_number: '', description: '', total_amount: '', due_date: new Date().toISOString().split('T')[0]
       });
       cargarCuentas();
     } catch (e) {
@@ -237,8 +237,8 @@ export function CuentasPanel() {
                 <label className="text-[10px] font-bold text-stone-500 uppercase">{activeTab === 'cobrar' ? 'Cliente' : 'Proveedor'}</label>
                 <select 
                   className="w-full p-2.5 border rounded-lg text-sm bg-white outline-none"
-                  value={activeTab === 'cobrar' ? nuevoCobro.client_id : nuevoPago.supplier_id}
-                  onChange={(e) => activeTab === 'cobrar' ? setNuevoCobro({...nuevoCobro, client_id: e.target.value}) : setNuevoPago({...nuevoPago, supplier_id: e.target.value})}
+                  value={activeTab === 'cobrar' ? nuevoCobro.customer_id : nuevoPago.supplier_id}
+                  onChange={(e) => activeTab === 'cobrar' ? setNuevoCobro({...nuevoCobro, customer_id: e.target.value}) : setNuevoPago({...nuevoPago, supplier_id: e.target.value})}
                 >
                   <option value="">Selecciona (Opcional)</option>
                   {activeTab === 'cobrar' 

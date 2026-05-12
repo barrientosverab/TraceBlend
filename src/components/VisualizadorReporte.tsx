@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import { useState } from 'react';
 import { type LabReportComplete } from '../types/laboratorio';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 import { Button } from './ui';

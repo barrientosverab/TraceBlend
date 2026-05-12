@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { LogOut } from 'lucide-react'; 
@@ -34,7 +34,7 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
       // 4. Ya tenemos OrgId, verificamos el estado del Setup
       if (orgId) {
         try {
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from('organizations')
             .select('setup_completed')
             .eq('id', orgId)

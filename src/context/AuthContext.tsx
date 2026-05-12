@@ -1,8 +1,7 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
 import { getUserProfile, UserProfile } from '../services/authService';
-import { getOrganizationSubscription, OrganizationSubscription } from '../services/subscriptionService';
 
 // Definimos QUÉ datos expone nuestro contexto
 export interface AuthContextType {
@@ -13,9 +12,8 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   role: string | null;
   orgId: string | null;
+  branchId: string | null;
   userName: string | null | undefined;
-  subscription: OrganizationSubscription | null;
-  planFeatures: string[];
 }
 
 // Creamos el contexto tipado (inicialmente undefined)
@@ -31,21 +29,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return cached ? JSON.parse(cached) : null;
   });
 
-  // Estado para suscripción
-  const [subscription, setSubscription] = useState<OrganizationSubscription | null>(null);
-
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (_userId: string) => {
     try {
       const data = await getUserProfile();
       if (data) {
         setProfile(data);
         localStorage.setItem('traceblend_profile', JSON.stringify(data));
-
-        // Cargar información de suscripción
-        if (data.organization_id) {
-          const subscriptionData = await getOrganizationSubscription(data.organization_id);
-          setSubscription(subscriptionData);
-        }
       }
     } catch (e) {
       console.error("Auth: Error buscando perfil", e);
@@ -128,9 +117,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!user,
     role: profile?.role || null,
     orgId: profile?.organization_id || null,
+    branchId: profile?.branch_id || null,
     userName: profile?.first_name || user?.email,
-    subscription,
-    planFeatures: subscription?.available_features || []
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

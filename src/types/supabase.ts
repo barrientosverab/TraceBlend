@@ -1,77 +1,58 @@
 /**
  * Tipos de la base de datos Supabase — TraceBlend
- * Actualizado: 2026-03-01 (optimización v2)
+ * Actualizado: 2026-04-30 (migración a nueva BD)
  *
- * TABLAS CONFIRMADAS (32):
- * billing_history, cash_closures, cash_openings, clients,
- * cupping_defects, expense_ledger, farms, finished_inventory,
- * fixed_expenses, green_coffee_warehouse, lab_reports,
- * lab_reports_cupping, lab_reports_physical, machines,
- * milling_inputs, milling_processes, organizations,
- * packaging_logs, product_promotions, product_recipes,
- * products, profiles, raw_inventory_batches,
- * roast_batch_inputs, roast_batches, sales_order_items,
- * sales_order_payments, sales_orders, subscription_plan_features,
- * subscription_plans, suppliers, supplies_inventory
+ * MÓDULO 1 — Núcleo SaaS:
+ *   subscription_plans, organizations, branches, profiles, billing_history
  *
- * ELIMINADAS: supply_movements (sin uso)
+ * MÓDULO 2 — Clientes globales:
+ *   customers, customer_org_links
  *
- * VISTAS ACTIVAS (9):
- * organization_subscription_details, v_lab_reports_complete,
- * vw_inventory_status, vw_roast_costs, vw_sales_detailed,
- * vw_recent_activity, v_product_seasonality,
- * v_financial_comparison, v_sales_summary
+ * MÓDULO 3 — Insumos y Recetas:
+ *   product_categories, supplies, supply_stock, products, product_recipes
+ *
+ * MÓDULO 4 — Ventas / POS:
+ *   sales, sale_items, sale_payments
+ *
+ * MÓDULO 5 — Gastos:
+ *   expense_categories, expenses, supply_purchases
+ *
+ * CAJA:
+ *   cash_openings, cash_closures
+ *
+ * CUENTAS:
+ *   accounts_receivable, accounts_payable
  */
 
 // ─────────────────────────────────────────────────────
 // ENUMS
 // ─────────────────────────────────────────────────────
 
-export type AppRole =
-    | 'administrador'
-    | 'laboratorio'
-    | 'operador'
-    | 'tostador'
-    | 'vendedor'
-    | 'viewer';
+/** org_status ENUM en BD */
+export type OrgStatus = 'trial' | 'active' | 'past_due' | 'canceled';
 
-export type CoffeeState =
-    | 'cereza'
-    | 'pergamino_humedo'
-    | 'pergamino_seco'
-    | 'oro_verde'
-    | 'inferior';
+/** user_role ENUM en BD */
+export type UserRole = 'admin' | 'cashier' | 'viewer';
 
-export type ExpenseCategory =
-    | 'alquiler'
-    | 'nomina'
-    | 'servicios'
-    | 'insumos_cafeteria'
-    | 'mantenimiento'
-    | 'marketing'
-    | 'impuestos'
-    | 'otros';
-
-export type FrequencyType = 'mensual' | 'anual' | 'quincenal' | 'unico';
-
-export type ScreenSize =
-    | 'malla_18'
-    | 'malla_16'
-    | 'malla_14'
-    | 'caracol'
-    | 'base_pasilla'
-    | 'cascarilla'
-    | 'sin_clasificar';
-
-export type SubscriptionPlanEnum = 'free_trial' | 'barista' | 'tostador' | 'enterprise';
-
-export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing';
-
-export type SupplierType = 'productor' | 'cooperativa' | 'importador';
+/** payment_method_type ENUM en BD */
+export type PaymentMethodType = 'cash' | 'card' | 'qr' | 'transfer';
 
 // ─────────────────────────────────────────────────────
-// TABLAS — Módulo SaaS / Autenticación
+// MÓDULO 1 — Núcleo SaaS
 // ─────────────────────────────────────────────────────
+
+export interface SubscriptionPlan {
+    id: string;
+    name: string;
+    code: string;
+    description?: string | null;
+    monthly_price: number;
+    max_users?: number | null;
+    max_branches?: number | null;
+    is_active: boolean;
+    created_at?: string | null;
+    updated_at?: string | null;
+}
 
 export interface Organization {
     id: string;
@@ -81,23 +62,31 @@ export interface Organization {
     tax_id?: string | null;
     logo_url?: string | null;
     currency_symbol?: string | null;
-    plan?: SubscriptionPlanEnum | null;
-    status?: SubscriptionStatus | null;
+    status?: OrgStatus | null;
     trial_ends_at?: string | null;
-    next_payment_date?: string | null;
+    subscription_plan_id?: string | null;
     setup_completed?: boolean | null;
-    subscription_plan_id?: string | null; // FK → subscription_plans
     created_at?: string | null;
-    // ELIMINADO: plan_type (no existe en BD real)
+}
+
+export interface Branch {
+    id: string;
+    organization_id: string;
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    is_main: boolean;
+    created_at?: string | null;
 }
 
 export interface Profile {
-    id: string; // = auth.uid()
+    id: string;               // = auth.uid()
+    organization_id?: string | null;
+    branch_id?: string | null;
     first_name?: string | null;
     last_name?: string | null;
     email?: string | null;
-    role?: AppRole | null;
-    organization_id?: string | null;
+    role?: UserRole | null;
     created_at?: string | null;
 }
 
@@ -111,421 +100,197 @@ export interface BillingHistory {
 }
 
 // ─────────────────────────────────────────────────────
-// TABLAS — Módulo Suscripciones
+// MÓDULO 2 — Clientes Globales
 // ─────────────────────────────────────────────────────
 
-export interface SubscriptionPlan {
+export interface Customer {
     id: string;
-    name: string;
-    code: string; // 'free_trial' | 'basic' | 'professional'
-    description?: string | null;
-    monthly_price: number;
-    max_users?: number | null;
-    is_active: boolean;
-    created_at?: string | null;
-    updated_at?: string | null;
-}
-
-export interface SubscriptionPlanFeature {
-    id: string;
-    subscription_plan_id: string;
-    feature_code: string;
-    created_at?: string | null;
-}
-
-// ─────────────────────────────────────────────────────
-// TABLAS — Supply Chain (materia prima)
-// ─────────────────────────────────────────────────────
-
-export interface Supplier {
-    id: string;
-    name: string;
+    business_name: string;
+    contact_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
     tax_id?: string | null;
-    type: SupplierType;
-    organization_id: string;
-    created_at?: string | null;
-}
-
-export interface Farm {
-    id: string;
-    name: string;
-    producer_name?: string | null;
     country_code?: string | null;
-    region?: string | null;
-    sub_region?: string | null;
-    altitude_masl?: number | null;
-    certifications?: string[] | null;
-    supplier_id?: string | null;
-    organization_id: string;
     created_at?: string | null;
 }
 
-export interface RawInventoryBatch {
+export interface CustomerOrgLink {
     id: string;
-    code_ref?: string | null;
-    current_state: CoffeeState;
-    initial_quantity: number;
-    current_quantity: number;
-    unit_of_measure?: string | null;
-    humidity_percentage?: number | null;
-    process?: string | null;
-    variety?: string | null;
-    purchase_date?: string | null;
-    total_cost_local?: number | null;
-    currency_original?: string | null;
-    observations?: string | null;
-    farm_id?: string | null;
+    customer_id: string;
     organization_id: string;
-    created_at?: string | null;
-}
-
-export interface MillingProcess {
-    id: string;
-    process_date?: string | null;
-    service_provider?: string | null;
-    service_cost?: number | null;
-    observations?: string | null;
-    created_by?: string | null;
-    organization_id: string;
-}
-
-export interface MillingInput {
-    id: string;
-    milling_process_id?: string | null;
-    raw_inventory_id?: string | null;
-    weight_used_kg: number;
-    organization_id: string;
-}
-
-export interface GreenCoffeeWarehouse {
-    id: string;
-    name_ref?: string | null;
-    quantity_kg: number;
-    screen_size: ScreenSize;
-    unit_cost_local?: number | null;
-    is_available?: boolean | null;
-    milling_process_id?: string | null;
-    organization_id: string;
-    created_at?: string | null;
-}
-
-// ─────────────────────────────────────────────────────
-// TABLAS — Laboratorio
-// ─────────────────────────────────────────────────────
-
-export interface LabReport {
-    id: string;
-    batch_id?: string | null;
-    analysis_date?: string | null;
-    green_quantity: number;
-    sample_total_grams: number;
-    mesh_18?: number | null;
-    mesh_16?: number | null;
-    mesh_14?: number | null;
-    base?: number | null;
-    defects?: number | null;
-    density?: number | null;
-    humidity_percentage?: number | null;
-    yield_factor?: number | null;
-    cupping_score?: number | null;
-    sensory_notes?: string | null;
-    organization_id: string;
-    created_at?: string | null;
-}
-
-/** Cata SCA — columnas confirmadas en BD */
-export interface LabReportCupping {
-    id: string;
-    lab_report_id?: string | null;
-    flavor?: number | null;
-    aftertaste?: number | null;
-    acidity?: number | null;
-    body?: number | null;
-    balance?: number | null;
-    uniformity?: number | null;
-    clean_cup?: number | null;
-    sweetness?: number | null;
-    overall?: number | null;
-    total_score?: number | null;
-}
-
-export interface LabReportPhysical {
-    id: string;
-    lab_report_id?: string | null;
-    [key: string]: unknown; // columnas pendientes de documentar
-}
-
-export interface CuppingDefect {
-    id: string;
-    [key: string]: unknown; // columnas pendientes de documentar
-}
-
-// ─────────────────────────────────────────────────────
-// TABLAS — Tueste
-// ─────────────────────────────────────────────────────
-
-export interface Machine {
-    id: string;
-    name: string;
-    brand?: string | null;
-    model?: string | null;
-    capacity_kg?: number | null;
-    connection_type?: string | null;
-    bridge_ip?: string | null;
-    sensor_config?: Record<string, unknown> | null;
-    driver_config?: Record<string, unknown> | null;
+    discount_rate?: number | null;
+    notes?: string | null;
     is_active?: boolean | null;
-    organization_id: string;
     created_at?: string | null;
-}
-
-/** Notas de cata post-tueste según protocolo SCA */
-export interface CuppingNotes {
-    fragrance?: number;
-    aroma?: number;
-    flavor?: number;
-    aftertaste?: number;
-    acidity?: number;
-    acidity_intensity?: 'alta' | 'media' | 'baja';
-    body?: number;
-    body_level?: 'pleno' | 'cremoso' | 'ligero';
-    balance?: number;
-    uniformity?: number;
-    clean_cup?: number;
-    sweetness?: number;
-    overall?: number;
-    defects?: number;
-    total_score?: number;
-    flavor_descriptors?: string[];
-    aroma_descriptors?: string[];
-    cata_date?: string;
-    cupper_name?: string;
-}
-
-export interface RoastBatch {
-    id: string;
-    roast_date?: string | null;
-    operator_name?: string | null;
-    machine_id?: string | null;
-    green_weight_input?: number | null;
-    roasted_weight_output?: number | null;
-    total_time_seconds?: number | null;
-    initial_bean_temp?: number | null;
-    initial_bean_humidity?: number | null;
-    ambient_temp?: number | null;
-    relative_humidity?: number | null;
-    drop_temp?: number | null;
-    roast_log_data?: Record<string, unknown> | null;
-    // Campos IA (migración 2026-02-19) — CONFIRMADOS en BD
-    altitude_masl?: number | null;
-    apparent_density?: number | null;
-    bean_humidity_pct?: number | null;
-    water_activity?: number | null;
-    variety?: string | null;
-    process_method?: string | null;
-    ambient_pressure_hpa?: number | null;
-    cupping_notes?: CuppingNotes | null;
-    roast_color_agtron?: number | null;
-    roast_level?: 'Light' | 'Medium-Light' | 'Medium' | 'Medium-Dark' | 'Dark' | null;
-    first_crack_time?: number | null;
-    first_crack_temp?: number | null;
-    development_time_pct?: number | null;
-    ror_peak?: number | null;
-    ror_at_drop?: number | null;
-    batch_notes?: string | null;
-    organization_id: string;
-    created_at?: string | null;
-}
-
-export interface RoastBatchInput {
-    id: string;
-    roast_batch_id?: string | null;
-    green_inventory_id?: string | null;
-    quantity_used_kg: number;
-    organization_id: string;
 }
 
 // ─────────────────────────────────────────────────────
-// TABLAS — Producción / Inventario
+// MÓDULO 3 — Insumos y Recetas
 // ─────────────────────────────────────────────────────
 
-export interface PackagingLog {
+export interface ProductCategory {
     id: string;
-    packaging_date?: string | null;
-    product_id?: string | null;
-    roast_batch_id?: string | null;
-    units_created: number;
-    operator_id?: string | null;
     organization_id: string;
-    created_at?: string | null;
-}
-
-export interface FinishedInventory {
-    id: string;
-    product_id?: string | null;
-    current_stock?: number | null;
-    last_updated?: string | null;
-    organization_id: string;
-}
-
-export interface SuppliesInventory {
-    id: string;
     name: string;
-    unit_measure: string;
-    current_stock?: number | null;
-    low_stock_threshold?: number | null;
-    unit_cost?: number | null;
+    parent_id?: string | null;
+    created_at?: string | null;
+}
+
+export interface Supply {
+    id: string;
     organization_id: string;
+    name: string;
+    unit_measure?: string | null;
+    unit_cost?: number | null;
+    is_active?: boolean | null;
+    created_at?: string | null;
+}
+
+export interface SupplyStock {
+    id: string;
+    supply_id: string;
+    branch_id: string;
+    quantity: number;
+    min_stock?: number | null;
     updated_at?: string | null;
 }
-
-// supply_movements fue eliminada en la optimización v2 (2026-03-01)
-// La tabla nunca fue integrada en el frontend
-
-// ─────────────────────────────────────────────────────
-// TABLAS — Productos / Ventas
-// ─────────────────────────────────────────────────────
 
 export interface Product {
     id: string;
+    organization_id: string;
     name: string;
     sku?: string | null;
-    category?: string | null;
-    is_roasted?: boolean | null;
-    is_active?: boolean | null;
+    category_id?: string | null;
     sale_price?: number | null;
-    currency_sale?: string | null;
+    is_active?: boolean | null;
+    takeaway_additional_cost?: number | null;
     package_weight_grams?: number | null;
-    source_green_inventory_id?: string | null;
-    container_supply_id?: string | null;       // ✅ confirmado en BD
-    takeaway_additional_cost?: number | null;  // ✅ confirmado en BD
-    organization_id: string;
+    created_at?: string | null;
 }
 
 export interface ProductRecipe {
     id: string;
-    product_id?: string | null;
-    supply_id?: string | null;
-    quantity: number;
-    organization_id?: string | null;
+    product_id: string;
+    supply_id: string;
+    quantity_required: number;
+    condition?: 'always' | 'takeaway' | 'dine_in' | null;
     created_at?: string | null;
 }
 
-export interface ProductPromotion {
+// ─────────────────────────────────────────────────────
+// MÓDULO 4 — Ventas / POS
+// ─────────────────────────────────────────────────────
+
+export interface Sale {
     id: string;
-    name: string;
-    product_id?: string | null;
-    discount_percent?: number | null;
-    is_courtesy?: boolean | null;
-    start_date: string;
-    end_date: string;
-    is_active?: boolean | null;
     organization_id: string;
-    created_at?: string | null;
-}
-
-export interface Client {
-    id: string;
-    business_name: string;
-    contact_name?: string | null;
-    client_type?: string | null;
-    email?: string | null;
-    phone?: string | null;
-    tax_id?: string | null;
-    discount_rate?: number | null;
-    is_active?: boolean | null;
-    notes?: string | null;
-    organization_id: string;
-    created_at?: string | null;
-}
-
-export interface SalesOrder {
-    id: string;
-    invoice_number?: string | null;
-    sale_number?: string | null;       // ✅ agregado en migración 2026-02-23
-    order_date?: string | null;
-    order_type?: string | null;
-    status?: string | null;
-    total_amount: number;
-    payment_method?: string | null;
-    is_mixed_payment?: boolean | null; // ✅ confirmado en BD
-    currency_code?: string | null;
-    client_id?: string | null;
+    branch_id?: string | null;
+    customer_id?: string | null;
     seller_id?: string | null;
-    organization_id: string;
+    sale_number?: string | null;
+    total_amount: number;
+    status?: string | null;
+    order_type?: string | null;
+    created_at?: string | null;
 }
 
-export interface SalesOrderItem {
+export interface SaleItem {
     id: string;
-    sales_order_id?: string | null;
+    sale_id: string;
     product_id?: string | null;
-    green_inventory_id?: string | null;
+    product_name?: string | null;
     quantity: number;
     unit_price: number;
     subtotal?: number | null;
-    product_name?: string | null;      // ✅ agregado en migración 2026-02-23
     discount_amount?: number | null;
-    discount_reason?: string | null;
-    discount_percent?: number | null;  // ✅ agregado en migración 2026-02-23
+    discount_percent?: number | null;
     is_courtesy?: boolean | null;
-    para_llevar?: boolean | null;      // ✅ confirmado en BD
-    container_cost?: number | null;    // ✅ confirmado en BD
-    organization_id: string;
+    created_at?: string | null;
 }
 
-export interface SalesOrderPayment {
+export interface SalePayment {
     id: string;
-    sales_order_id: string;
-    payment_method: 'Efectivo' | 'QR' | 'Tarjeta';
+    sale_id: string;
+    payment_method: PaymentMethodType;
     amount: number;
-    organization_id: string;
     created_at?: string | null;
 }
 
 // ─────────────────────────────────────────────────────
-// TABLAS — Finanzas / Caja
+// MÓDULO 5 — Gastos
 // ─────────────────────────────────────────────────────
 
-export interface FixedExpense {
+export interface ExpenseCategory {
     id: string;
+    organization_id: string;
     name: string;
-    amount: number;
-    category: ExpenseCategory;
-    frequency: FrequencyType;
-    cost_center?: 'produccion' | 'ventas_marketing' | 'administracion' | 'otro' | null;
-    is_active?: boolean | null;
-    organization_id: string;
+    type: 'fixed' | 'variable';
     created_at?: string | null;
 }
 
-export interface ExpenseLedger {
+export interface Expense {
     id: string;
-    expense_id?: string | null;
+    organization_id: string;
+    branch_id?: string | null;
+    expense_category_id?: string | null;
     description: string;
-    amount_paid: number;
-    payment_date: string;
-    payment_method?: string | null;
-    cost_center?: 'produccion' | 'ventas_marketing' | 'administracion' | 'otro' | null;
-    organization_id: string;
+    amount: number;
+    payment_date?: string | null;
+    payment_method?: PaymentMethodType | null;
     created_at?: string | null;
 }
 
-export interface MonthlyBudget {
+export interface SupplyPurchase {
     id: string;
     organization_id: string;
-    category: string;             // matches ExpenseCategory values
-    cost_center?: 'produccion' | 'ventas_marketing' | 'administracion' | 'otro' | null;
-    budget_amount: number;
-    month_year: string;           // format: 'YYYY-MM'
-    notes?: string | null;
+    branch_id?: string | null;
+    supply_id: string;
+    quantity: number;
+    unit_cost: number;
+    total_cost: number;
+    purchase_date?: string | null;
     created_at?: string | null;
-    updated_at?: string | null;
 }
+
+// ─────────────────────────────────────────────────────
+// Caja
+// ─────────────────────────────────────────────────────
+
+export interface CashOpening {
+    id: string;
+    branch_id: string;
+    user_id: string;
+    initial_cash?: number | null;
+    notes?: string | null;
+    opened_at?: string | null;
+    closed?: boolean | null;
+}
+
+export interface CashClosure {
+    id: string;
+    branch_id: string;
+    opening_id?: string | null;
+    user_id: string;
+    system_cash?: number | null;
+    system_card?: number | null;
+    system_qr?: number | null;
+    declared_cash?: number | null;
+    declared_card?: number | null;
+    declared_qr?: number | null;
+    cash_withdrawals?: number | null;
+    difference?: number | null;
+    notes?: string | null;
+    closed_at?: string | null;
+}
+
+// ─────────────────────────────────────────────────────
+// Cuentas por Cobrar / Pagar
+// ─────────────────────────────────────────────────────
 
 export interface AccountsReceivable {
     id: string;
     organization_id: string;
-    client_id?: string | null;
+    customer_id?: string | null;
     invoice_number?: string | null;
     description: string;
     total_amount: number;
@@ -539,7 +304,6 @@ export interface AccountsReceivable {
 export interface AccountsPayable {
     id: string;
     organization_id: string;
-    supplier_id?: string | null;
     invoice_number?: string | null;
     description: string;
     total_amount: number;
@@ -550,27 +314,8 @@ export interface AccountsPayable {
     updated_at?: string | null;
 }
 
-export interface CashOpening {
-    id: string;
-    initial_cash?: number | null;
-    notes?: string | null;
-    opened_at?: string | null;
-    user_id: string;
-    organization_id: string;
-}
-
-export interface CashClosure {
-    id: string;
-    system_cash?: number | null;
-    system_card?: number | null;
-    system_qr?: number | null;
-    declared_cash?: number | null;
-    declared_card?: number | null;
-    declared_qr?: number | null;
-    cash_withdrawals?: number | null;
-    difference?: number | null;
-    notes?: string | null;
-    closed_at?: string | null;
-    user_id: string;
-    organization_id: string;
-}
+// ─────────────────────────────────────────────────────
+// Tipos utilitarios (compatibilidad con Supabase generado)
+// ─────────────────────────────────────────────────────
+export type Database = any;
+export type Json = any;

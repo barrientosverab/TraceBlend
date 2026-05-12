@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { registrarApertura } from '../services/cajaService';
 import { toast } from 'sonner';

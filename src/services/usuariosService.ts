@@ -1,9 +1,5 @@
-// src/services/usuariosService.ts
-import { supabase } from './supabaseClient';
-import { Database } from '../types/supabase';
-
-// Definimos el tipo de Rol basado en la BD
-type UserRole = Database['public']['Tables']['profiles']['Insert']['role'];
+import { supabase, supabaseAdmin } from './supabaseClient';
+import { UserRole } from '../types/supabase';
 
 export const getUsuarios = async (orgId: string) => {
   const { data, error } = await supabase
@@ -19,7 +15,6 @@ export const getUsuarios = async (orgId: string) => {
 export const actualizarRol = async (userId: string, nuevoRol: string) => {
   const { data, error } = await supabase
     .from('profiles')
-    // 2. Aquí también hacemos el casting para asegurar que 'nuevoRol' es válido
     .update({ role: nuevoRol as UserRole })
     .eq('id', userId)
     .select()
@@ -32,19 +27,25 @@ export const actualizarRol = async (userId: string, nuevoRol: string) => {
 export interface InvitacionData {
   email: string;
   nombre: string;
-  rol: string; // En el formulario sigue siendo string
+  rol: string;
 }
 
 export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
-  // Generar contraseña temporal
   const tempPassword = `Trace${Math.floor(1000 + Math.random() * 9000)}!`;
 
   try {
-    // PASO 1: Crear el usuario con Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    if (!supabaseAdmin) {
+      throw new Error(
+        'Para invitar usuarios necesitas configurar VITE_SUPABASE_SERVICE_ROLE_KEY en tu archivo .env. ' +
+        'Encuéntrala en Supabase Dashboard → Project Settings → API → service_role secret.'
+      );
+    }
+
+    // PASO 1: Crear el usuario con el cliente admin (service role key)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: datos.email,
       password: tempPassword,
-      email_confirm: true, // Auto-confirmar email para usuarios invitados
+      email_confirm: true,
       user_metadata: {
         first_name: datos.nombre,
         last_name: '',
@@ -53,9 +54,8 @@ export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
     });
 
     if (authError) {
-      // Mensajes de error más descriptivos
       if (authError.message.includes('not allowed') || authError.message.includes('JWT')) {
-        throw new Error('Error de configuración: Verifica que estés usando el Service Role Key en Supabase. Contacta al administrador del sistema.');
+        throw new Error('Error de configuración: Verifica que estés usando el Service Role Key en Supabase.');
       }
       if (authError.message.includes('already registered')) {
         throw new Error('Este email ya está registrado en el sistema.');
@@ -65,19 +65,15 @@ export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
 
     if (!authData.user) throw new Error('No se pudo crear el usuario');
 
-    // PASO 2: Crear/actualizar el perfil con organization_id
-    // Usar upsert para asegurar que se cree o actualice el perfil
+    // PASO 2: Crear/actualizar el perfil con organization_id y branch_id
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
         id: authData.user.id,
         email: datos.email,
         first_name: datos.nombre,
-        last_name: '',
         role: datos.rol as UserRole,
         organization_id: orgId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
       }, {
         onConflict: 'id'
       });
@@ -86,8 +82,6 @@ export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
       console.error('Error creating profile:', profileError);
       throw new Error(`Error al crear perfil: ${profileError.message}`);
     }
-
-    console.log(`Usuario ${datos.email} invitado exitosamente a org ${orgId}`);
 
     return { user: authData.user, tempPassword };
   } catch (error: any) {

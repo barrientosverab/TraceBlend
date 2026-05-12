@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabaseClient';
@@ -20,15 +20,13 @@ export const SubscriptionGuard = ({ children }: { children: React.ReactNode }) =
   }, [orgId]);
 
   const checkSubscription = async () => {
-    // CORRECCIÓN AQUÍ: 
-    // Esta línea le asegura a TypeScript que si pasamos de aquí, orgId tiene valor.
     if (!orgId) return;
 
     try {
       const { data, error } = await supabase
         .from('organizations')
-        .select('plan, status, trial_ends_at, next_payment_date')
-        .eq('id', orgId) // Ahora TypeScript sabe que orgId es 'string' seguro
+        .select('status, trial_ends_at')
+        .eq('id', orgId)
         .single();
 
       if (error) throw error;
@@ -45,25 +43,24 @@ export const SubscriptionGuard = ({ children }: { children: React.ReactNode }) =
     return <div className="h-screen bg-stone-50 flex items-center justify-center text-stone-500 font-bold animate-pulse">Verificando acceso...</div>;
   }
 
-  // Si no cargó el estado (ej. error de red) o no hay orgId, dejamos pasar o mostramos loading
+  // Si no cargó el estado (ej. error de red) o no hay orgId, dejamos pasar
   if (!status) return <>{children}</>;
 
   const now = new Date();
-  const trialEnd = new Date(status.trial_ends_at);
-  const paymentDue = status.next_payment_date ? new Date(status.next_payment_date) : null;
+  const trialEnd = status.trial_ends_at ? new Date(status.trial_ends_at) : null;
 
   // Lógica de Bloqueo
   let isLocked = false;
   let message = "";
 
   // Caso 1: Prueba Gratuita Vencida
-  if (status.plan === 'free_trial' && now > trialEnd) {
+  if (status.status === 'trial' && trialEnd && now > trialEnd) {
     isLocked = true;
     message = "Tu periodo de prueba de 14 días ha finalizado.";
   }
 
   // Caso 2: Suscripción Vencida (Impago)
-  if (status.status === 'past_due' || (status.status === 'active' && paymentDue && now > paymentDue)) {
+  if (status.status === 'past_due' || status.status === 'canceled') {
     isLocked = true;
     message = "Tu suscripción ha vencido. Realiza el pago para continuar.";
   }

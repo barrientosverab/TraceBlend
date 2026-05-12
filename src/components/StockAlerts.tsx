@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, Package, ShoppingBag } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
@@ -24,14 +24,35 @@ export function StockAlerts() {
 
         const fetchAlerts = async () => {
             try {
+                // Query supply_stock + supplies directamente (sin vista)
                 const { data, error } = await supabase
-                    .from('v_stock_alerts')
-                    .select('*')
-                    .eq('organization_id', orgId)
-                    .limit(10); // Mostrar solo las 10 más críticas
+                    .from('supply_stock')
+                    .select('id, quantity, min_stock, supplies!inner(name, unit_measure, organization_id)')
+                    .eq('supplies.organization_id', orgId)
+                    .limit(20);
 
                 if (error) throw error;
-                setAlerts(data || []);
+
+                // Filtrar y mapear alertas
+                const alertas: StockAlert[] = (data || [])
+                    .filter((item: any) => item.min_stock && item.quantity <= item.min_stock)
+                    .map((item: any) => {
+                        const deficit = item.min_stock - item.quantity;
+                        const severity: 'critical' | 'high' | 'medium' = item.quantity === 0 ? 'critical' : deficit > item.min_stock * 0.5 ? 'high' : 'medium';
+                        return {
+                            type: 'insumo' as const,
+                            id: item.id,
+                            name: item.supplies?.name || 'Insumo',
+                            current_stock: item.quantity,
+                            min_stock: item.min_stock,
+                            unit_measure: item.supplies?.unit_measure || 'und',
+                            deficit,
+                            severity
+                        };
+                    })
+                    .slice(0, 10);
+
+                setAlerts(alertas);
             } catch (e) {
                 console.error('Error cargando alertas:', e);
             } finally {

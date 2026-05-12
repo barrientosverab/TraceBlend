@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, UserPlus, CheckCircle, Copy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getUsuarios, actualizarRol, invitarUsuario, InvitacionData } from '../services/usuariosService';
@@ -19,7 +19,7 @@ export function Usuarios() {
   const [loading, setLoading] = useState(true);
   
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteData, setInviteData] = useState<InvitacionData>({ email: '', nombre: '', rol: 'operador' });
+  const [inviteData, setInviteData] = useState<InvitacionData>({ email: '', nombre: '', rol: 'cashier' });
   const [successInfo, setSuccessInfo] = useState<{email: string, password: string} | null>(null);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function Usuarios() {
       if (res) {
         setSuccessInfo({ email: inviteData.email, password: res.tempPassword });
         setShowInvite(false);
-        setInviteData({ email: '', nombre: '', rol: 'operador' });
+        setInviteData({ email: '', nombre: '', rol: 'cashier' });
         const u = await getUsuarios(orgId);
         setUsuarios(u as UsuarioItem[]);
       }
@@ -136,10 +136,9 @@ export function Usuarios() {
                     onChange={(e) => handleRoleChange(u.id, e.target.value)}
                     disabled={u.email === user?.email}
                   >
-                    <option value="administrador">Administrador</option>
-                    <option value="operador">Operador</option>
-                    <option value="tostador">Tostador</option>
-                    <option value="vendedor">Vendedor</option>
+                    <option value="admin">Administrador</option>
+                    <option value="cashier">Vendedor</option>
+                    <option value="viewer">Visor</option>
                   </select>
                 </td>
               </tr>
@@ -157,10 +156,9 @@ export function Usuarios() {
               <input className="w-full p-2 border rounded" placeholder="Nombre" value={inviteData.nombre} onChange={e => setInviteData({...inviteData, nombre: e.target.value})} />
               <input className="w-full p-2 border rounded" type="email" placeholder="Email" value={inviteData.email} onChange={e => setInviteData({...inviteData, email: e.target.value})} />
               <select className="w-full p-2 border rounded bg-white" value={inviteData.rol} onChange={e => setInviteData({...inviteData, rol: e.target.value})}>
-                <option value="operador">Operador</option>
-                <option value="tostador">Tostador</option>
-                <option value="vendedor">Vendedor</option>
-                <option value="administrador">Admin</option>
+                <option value="cashier">Vendedor</option>
+                <option value="viewer">Visor</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div className="flex gap-3 mt-6">
