@@ -10,8 +10,6 @@ export const RegisterSchema = z.object({
     lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres'),
     email: z.string().email('Correo inválido'),
     password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-    orgName: z.string().min(3, 'El nombre de la empresa es obligatorio (min 3 caracteres)'),
-    nit: z.string().optional(),
 });
 
 export type LoginFormData = z.infer<typeof LoginSchema>;

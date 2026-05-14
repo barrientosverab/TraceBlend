@@ -49,7 +49,7 @@ const PageLoader = () => (
 );
 
 function App() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, profile, loading } = useAuth();
 
   if (loading) {
     return <PageLoader />;
@@ -75,9 +75,16 @@ function App() {
             </>
           )}
 
-          {/* --- RUTAS PRIVADAS (Layout con Sidebar) --- */}
+          {/* --- RUTAS PRIVADAS --- */}
           {isAuthenticated && (
             <>
+              {/* ONBOARDING: Requiere usuario autenticado, NO requiere organización */}
+              <Route path="/onboarding" element={
+                profile && profile.organization_id
+                  ? <Navigate to="/" replace />
+                  : <Onboarding />
+              } />
+
               {/* SUPER ADMIN */}
               <Route path="/super-admin" element={<Layout><SuperAdmin /></Layout>} />
 
@@ -86,12 +93,6 @@ function App() {
 
               {/* --- ZONA DE CLIENTES (Protegida por Suscripción) --- */}
               <Route element={<SubscriptionGuard><Outlet /></SubscriptionGuard>}>
-                <Route path="/onboarding" element={
-                  <SetupGuard>
-                    <Onboarding />
-                  </SetupGuard>
-                } />
-
                 <Route element={<SetupGuard><Layout /></SetupGuard>}>
                   <Route path="/" element={<PermissionGuard feature="dashboard"><Dashboard /></PermissionGuard>} />
 
@@ -117,8 +118,12 @@ function App() {
 
               </Route>
 
-              {/* Redirección por defecto */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Redirección: usuario sin org → onboarding; con org → dashboard */}
+              <Route path="*" element={
+                profile && !profile.organization_id
+                  ? <Navigate to="/onboarding" replace />
+                  : <Navigate to="/" replace />
+              } />
 
             </>
           )}

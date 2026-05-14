@@ -39,9 +39,9 @@ export function HistorialCierres() {
                 filtros.fechaHasta = fecha.toISOString();
             }
             if (cajeroFiltro) {
-                // Buscar el user_id del cajero seleccionado
+                // Buscar el profile_id del cajero seleccionado
                 const cajero = cierres.find(c => c.user_name === cajeroFiltro);
-                if (cajero) filtros.userId = cajero.user_id;
+                if (cajero) filtros.profileId = cajero.profile_id;
             }
 
             const data = await getCierresHistorico(orgId!, filtros);
@@ -190,23 +190,24 @@ export function HistorialCierres() {
                             </thead>
                             <tbody className="divide-y divide-stone-100">
                                 {cierres.map((cierre) => {
-                                    const totalVentas = cierre.system_cash - cierre.initial_cash;
-                                    const cuadrado = Math.abs(cierre.difference) < 0.5;
+                                    const totalVentas = cierre.system_cash - cierre.opening;
+                                    const diff = cierre.closing_cash - cierre.system_cash;
+                                    const cuadrado = Math.abs(diff) < 0.5;
 
                                     return (
                                         <tr key={cierre.id} className="hover:bg-stone-50 transition-colors">
                                             <td className="px-4 py-3 text-sm text-stone-700">
                                                 <div className="flex items-center gap-2">
                                                     <Clock size={14} className="text-stone-400" />
-                                                    {formatearFecha(cierre.closed_at)}
+                                                    {formatearFecha(cierre.closed_at || '')}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-sm font-medium text-stone-800">
                                                 {cierre.user_name}
-                                                <span className="text-xs text-stone-400 ml-2">({cierre.sales_count} ventas)</span>
+                                                <span className="text-xs text-stone-400 ml-2">({(cierre as any).sales_count || 0} ventas)</span>
                                             </td>
                                             <td className="px-4 py-3 text-sm text-right font-mono text-stone-700">
-                                                Bs {cierre.initial_cash.toFixed(2)}
+                                                Bs {cierre.opening.toFixed(2)}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-right font-mono text-emerald-600 font-bold">
                                                 Bs {totalVentas.toFixed(2)}
@@ -220,7 +221,7 @@ export function HistorialCierres() {
                                                     : 'bg-red-100 text-red-700'
                                                     }`}>
                                                     {cuadrado ? <CheckCircle size={12} /> : <AlertCircle size={12} />}
-                                                    {cierre.difference > 0 ? '+' : ''}{cierre.difference.toFixed(2)} Bs
+                                                    {diff > 0 ? '+' : ''}{diff.toFixed(2)} Bs
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-center">
@@ -278,13 +279,13 @@ export function HistorialCierres() {
                                         <div>
                                             <p className="text-xs text-blue-600 mb-1">Monto Inicial</p>
                                             <p className="text-2xl font-bold font-mono text-blue-900">
-                                                Bs {cierreSeleccionado.cierre.initial_cash.toFixed(2)}
+                                                Bs {cierreSeleccionado.cierre.opening.toFixed(2)}
                                             </p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-blue-600 mb-1">Hora de Apertura</p>
                                             <p className="text-sm font-medium text-blue-900">
-                                                {formatearFecha(cierreSeleccionado.cierre.opened_at)}
+                                                {formatearFecha(cierreSeleccionado.cierre.created_at)}
                                             </p>
                                         </div>
                                     </div>
@@ -369,49 +370,42 @@ export function HistorialCierres() {
                                         <div className="flex justify-between items-center">
                                             <p className="text-sm text-stone-600">Efectivo Declarado</p>
                                             <p className="font-mono font-bold text-stone-800">
-                                                Bs {cierreSeleccionado.cierre.declared_cash.toFixed(2)}
+                                                Bs {cierreSeleccionado.cierre.closing_cash.toFixed(2)}
                                             </p>
                                         </div>
 
-                                        {cierreSeleccionado.cierre.cash_withdrawals > 0 && (
-                                            <div className="flex justify-between items-center">
-                                                <p className="text-sm text-stone-600">Gastos/Retiros</p>
-                                                <p className="font-mono font-bold text-red-600">
-                                                    - Bs {cierreSeleccionado.cierre.cash_withdrawals.toFixed(2)}
-                                                </p>
-                                            </div>
-                                        )}
+
 
                                         <div className="pt-3 border-t border-stone-200">
-                                            <div className={`flex justify-between items-center p-3 rounded-lg ${Math.abs(cierreSeleccionado.cierre.difference) < 0.5
+                                            <div className={`flex justify-between items-center p-3 rounded-lg ${Math.abs(cierreSeleccionado.cierre.closing_cash - cierreSeleccionado.cierre.system_cash) < 0.5
                                                 ? 'bg-emerald-100'
                                                 : 'bg-red-100'
                                                 }`}>
                                                 <p className="font-bold text-sm flex items-center gap-2">
-                                                    {Math.abs(cierreSeleccionado.cierre.difference) < 0.5 ? (
+                                                    {Math.abs(cierreSeleccionado.cierre.closing_cash - cierreSeleccionado.cierre.system_cash) < 0.5 ? (
                                                         <CheckCircle size={18} className="text-emerald-700" />
                                                     ) : (
                                                         <AlertCircle size={18} className="text-red-700" />
                                                     )}
-                                                    <span className={Math.abs(cierreSeleccionado.cierre.difference) < 0.5 ? 'text-emerald-800' : 'text-red-800'}>
+                                                    <span className={Math.abs(cierreSeleccionado.cierre.closing_cash - cierreSeleccionado.cierre.system_cash) < 0.5 ? 'text-emerald-800' : 'text-red-800'}>
                                                         Diferencial
                                                     </span>
                                                 </p>
-                                                <p className={`text-xl font-bold font-mono ${Math.abs(cierreSeleccionado.cierre.difference) < 0.5
+                                                <p className={`text-xl font-bold font-mono ${Math.abs(cierreSeleccionado.cierre.closing_cash - cierreSeleccionado.cierre.system_cash) < 0.5
                                                     ? 'text-emerald-700'
                                                     : 'text-red-700'
                                                     }`}>
-                                                    {cierreSeleccionado.cierre.difference > 0 ? '+' : ''}
-                                                    {cierreSeleccionado.cierre.difference.toFixed(2)} Bs
+                                                    {(cierreSeleccionado.cierre.closing_cash - cierreSeleccionado.cierre.system_cash) > 0 ? '+' : ''}
+                                                    {(cierreSeleccionado.cierre.closing_cash - cierreSeleccionado.cierre.system_cash).toFixed(2)} Bs
                                                 </p>
                                             </div>
                                         </div>
 
-                                        {cierreSeleccionado.cierre.notes && (
+                                        {cierreSeleccionado.cierre.note && (
                                             <div className="pt-3 border-t border-stone-200">
                                                 <p className="text-xs font-bold text-stone-600 mb-2">Notas del Cajero</p>
                                                 <p className="text-sm text-stone-700 bg-white p-3 rounded-lg border border-stone-200">
-                                                    {cierreSeleccionado.cierre.notes}
+                                                    {cierreSeleccionado.cierre.note}
                                                 </p>
                                             </div>
                                         )}

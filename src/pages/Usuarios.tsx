@@ -3,6 +3,9 @@ import { Users, UserPlus, CheckCircle, Copy } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getUsuarios, actualizarRol, invitarUsuario, InvitacionData } from '../services/usuariosService';
 import { toast } from 'sonner';
+import { supabase } from '../services/supabaseClient';
+import { Tables } from '../types/supabase';
+
 
 // Definimos la interfaz localmente para tipar el estado
 interface UsuarioItem {
@@ -19,20 +22,23 @@ export function Usuarios() {
   const [loading, setLoading] = useState(true);
   
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteData, setInviteData] = useState<InvitacionData>({ email: '', nombre: '', rol: 'cashier' });
+  const [inviteData, setInviteData] = useState<InvitacionData>({ email: '', nombre: '', rol: 'cashier', branchId: '' });
   const [successInfo, setSuccessInfo] = useState<{email: string, password: string} | null>(null);
+  const [sucursales, setSucursales] = useState<Tables<'branches'>[]>([]);
 
   useEffect(() => {
     if (orgId) {
+      supabase.from('branches').select('*').eq('organization_id', orgId).then(({data}) => {
+        if(data) setSucursales(data);
+      });
       getUsuarios(orgId).then(data => {
-        const safeData = data.map((u: any) => ({
+        setUsuarios(data.map((u: any) => ({
           id: u.id,
-          email: u.email,
+          email: u.email || null,
           first_name: u.first_name,
           role: u.role,
           organization_id: u.organization_id
-        }));
-        setUsuarios(safeData);
+        })));
         setLoading(false);
       });
     }
@@ -45,9 +51,15 @@ export function Usuarios() {
       if (res) {
         setSuccessInfo({ email: inviteData.email, password: res.tempPassword });
         setShowInvite(false);
-        setInviteData({ email: '', nombre: '', rol: 'cashier' });
+        setInviteData({ email: '', nombre: '', rol: 'cashier', branchId: '' });
         const u = await getUsuarios(orgId);
-        setUsuarios(u as UsuarioItem[]);
+        setUsuarios(u.map((item: any) => ({
+          id: item.id,
+          email: item.email || null,
+          first_name: item.first_name,
+          role: item.role,
+          organization_id: item.organization_id
+        })));
       }
     } catch (e: any) {
       toast.error('Error al invitar', { description: e.message });
@@ -62,7 +74,13 @@ export function Usuarios() {
           try {
             await actualizarRol(userId, newRole);
             const u = await getUsuarios(orgId!);
-            setUsuarios(u as UsuarioItem[]);
+            setUsuarios(u.map((item: any) => ({
+              id: item.id,
+              email: item.email || null,
+              first_name: item.first_name,
+              role: item.role,
+              organization_id: item.organization_id
+            })));
             toast.success("Rol actualizado");
           } catch (e: any) { toast.error(e.message); }
         }
@@ -160,6 +178,14 @@ export function Usuarios() {
                 <option value="viewer">Visor</option>
                 <option value="admin">Admin</option>
               </select>
+              {inviteData.rol === 'cashier' && (
+                <select className="w-full p-2 border rounded bg-white" value={inviteData.branchId || ''} onChange={e => setInviteData({...inviteData, branchId: e.target.value})}>
+                  <option value="">Seleccionar Sucursal (Opcional)</option>
+                  {sucursales.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowInvite(false)} className="flex-1 py-2 text-stone-500 font-bold">Cancelar</button>

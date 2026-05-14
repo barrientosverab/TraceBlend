@@ -8,7 +8,7 @@ export interface SubscriptionPlan {
     name: string;
     code: string;
     description: string | null;
-    monthly_price: number;
+    price_monthly: number;
     max_users: number | null;
     is_active: boolean;
 }
@@ -22,7 +22,7 @@ export interface OrganizationSubscription {
     plan_id: string | null;
     plan_name: string | null;
     plan_code: string | null;
-    monthly_price: number | null;
+    price_monthly: number | null;
     max_users: number | null;
     trial_ends_at: string | null;
     is_trial_active: boolean;
@@ -58,7 +58,7 @@ export async function getOrganizationPlan(organizationId: string): Promise<Subsc
           name,
           code,
           description,
-          monthly_price,
+          price_monthly,
           max_users,
           is_active
         )
@@ -87,17 +87,18 @@ export async function getOrganizationPlan(organizationId: string): Promise<Subsc
  */
 export async function getPlanFeatures(planId: string): Promise<string[]> {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
             .from('subscription_plan_features')
-            .select('feature_code')
-            .eq('subscription_plan_id', planId);
+            .select('feature_name')
+            .eq('plan_id', planId)
+            .eq('has_access', true);
 
         if (error) {
             console.error('[SubscriptionService] Error obteniendo features del plan:', error);
             return [];
         }
 
-        return data?.map(f => f.feature_code) || [];
+        return data?.map((f: any) => f.feature_name) || [];
     } catch (error) {
         console.error('[SubscriptionService] Error obteniendo features del plan:', error);
         return [];
@@ -112,7 +113,7 @@ export async function getOrganizationSubscription(
     organizationId: string
 ): Promise<OrganizationSubscription | null> {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
             .from('organization_subscription_details')
             .select('*')
             .eq('organization_id', organizationId)
@@ -159,15 +160,19 @@ export async function hasFeatureAccess(
         }
 
         // Si tiene features disponibles, verificar acceso específico
-        if (!subscription.available_features || subscription.available_features.length === 0) {
-            return false;
+        // Obtenemos del plan:
+        if (subscription.plan_id) {
+            const features = await getPlanFeatures(subscription.plan_id);
+            if (features.length === 0) return false;
+            
+            // Actualizar caché
+            featureCache.set(organizationId, new Set(features));
+            cacheTimestamp = now;
+
+            return features.includes(featureCode.toLowerCase());
         }
 
-        // Actualizar caché
-        featureCache.set(organizationId, new Set(subscription.available_features));
-        cacheTimestamp = now;
-
-        return subscription.available_features.includes(featureCode.toLowerCase());
+        return false;
     } catch (error) {
         console.error('[SubscriptionService] Error verificando acceso:', error);
         return false;
@@ -182,9 +187,11 @@ export async function getAccessibleRoutes(organizationId: string): Promise<strin
     try {
         const subscription = await getOrganizationSubscription(organizationId);
 
-        if (!subscription || !subscription.available_features) {
+        if (!subscription || !subscription.plan_id) {
             return [];
         }
+        
+        const available_features = await getPlanFeatures(subscription.plan_id);
 
         // Mapeo de features a rutas
         const featureToRoutes: Record<string, string[]> = {
@@ -208,7 +215,7 @@ export async function getAccessibleRoutes(organizationId: string): Promise<strin
         };
 
         const accessibleRoutes: string[] = [];
-        subscription.available_features.forEach(feature => {
+        available_features.forEach(feature => {
             const routes = featureToRoutes[feature];
             if (routes) {
                 accessibleRoutes.push(...routes);
@@ -288,14 +295,14 @@ export async function getAllSubscriptionPlans(): Promise<SubscriptionPlan[]> {
             .from('subscription_plans')
             .select('*')
             .eq('is_active', true)
-            .order('monthly_price', { ascending: true });
+            .order('price_monthly', { ascending: true });
 
         if (error) {
             console.error('[SubscriptionService] Error obteniendo planes:', error);
             return [];
         }
 
-        return data as SubscriptionPlan[];
+        return data as unknown as SubscriptionPlan[];
     } catch (error) {
         console.error('[SubscriptionService] Error obteniendo planes:', error);
         return [];

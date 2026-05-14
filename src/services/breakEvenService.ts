@@ -51,14 +51,14 @@ export const calculateBreakEven = async (orgId: string): Promise<BreakEvenMetric
   // 2. Obtener Ticket Promedio (Promedio de todas las ventas del mes)
   const { data: ventas } = await supabase
     .from('sales')
-    .select('total_amount')
+    .select('total')
     .eq('organization_id', orgId)
     .eq('status', 'completed')
     .gte('created_at', inicioMes);
 
   let ticketPromedio = 15; // Valor fallback
   if (ventas && ventas.length > 0) {
-    const totalVentas = ventas.reduce((sum, v) => sum + v.total_amount, 0);
+    const totalVentas = ventas.reduce((sum, v) => sum + v.total, 0);
     ticketPromedio = totalVentas / ventas.length;
   }
 

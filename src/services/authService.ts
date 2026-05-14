@@ -4,11 +4,13 @@ import { supabase } from './supabaseClient';
 // Definimos la interfaz de lo que devuelve TU función (mezcla Auth + Base de datos)
 export interface UserProfile {
   id: string;
-  email: string | undefined;
+  first_name: string | null;
+  last_name: string | null;
+  role: string | null;
   organization_id: string | null;
   branch_id: string | null;
-  role: string | null; // El tipo generado probablemente sea un string o un enum
-  first_name: string | null;
+  is_active: boolean | null;
+  email?: string | undefined;
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
@@ -16,9 +18,9 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
   if (!user) return null;
 
   // Como ya conectamos el cliente, TypeScript sabe que 'profiles' existe
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('profiles')
-    .select('organization_id, branch_id, role, first_name') // TS validará que estos campos existan
+    .select('id, first_name, last_name, role, organization_id, branch_id, is_active')
     .eq('id', user.id)
     .single();
 
@@ -28,12 +30,14 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
   }
   
   return { 
-    id: user.id, 
+    id: data.id || user.id, 
     email: user.email,
     organization_id: data.organization_id,
     branch_id: data.branch_id,
     role: data.role,
-    first_name: data.first_name
+    first_name: data.first_name,
+    last_name: data.last_name,
+    is_active: data.is_active
   };
 };
 

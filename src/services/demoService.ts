@@ -68,10 +68,10 @@ export const generarDatosDemo = async (orgId: string, branchId: string) => {
       .insert({
         organization_id: orgId,
         branch_id: branchId,
-        total_amount: total,
+        total: total,
         created_at: fecha.toISOString(),
-        status: 'completed'
-      })
+        sale_status: 'completed'
+      } as any)
       .select()
       .single();
 
@@ -98,11 +98,10 @@ export const generarDatosDemo = async (orgId: string, branchId: string) => {
     }
   }
 
-  // 5. REGISTRAR GASTOS DE EJEMPLO
   await supabase.from('expenses').insert([
-    { organization_id: orgId, description: 'Alquiler Local', amount: 2500, payment_date: ayer.toISOString().split('T')[0] },
-    { organization_id: orgId, description: 'Pago Luz', amount: 350, payment_date: hoy.toISOString().split('T')[0] },
-    { organization_id: orgId, description: 'Compra Leche Extra', amount: 120, payment_date: hoy.toISOString().split('T')[0] },
+    { organization_id: orgId, description: 'Alquiler Local', amount: 2500, expense_date: ayer.toISOString().split('T')[0] } as any,
+    { organization_id: orgId, description: 'Pago Luz', amount: 350, expense_date: hoy.toISOString().split('T')[0] } as any,
+    { organization_id: orgId, description: 'Compra Leche Extra', amount: 120, expense_date: hoy.toISOString().split('T')[0] } as any,
   ]);
 
   return true;

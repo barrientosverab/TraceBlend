@@ -4,7 +4,9 @@ import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 import { Shield, CheckCircle, XCircle, DollarSign, Wand2 } from 'lucide-react';
 import { generarDatosDemo } from '../services/demoService';
-import { Organization } from '../types/supabase';
+import { Tables } from '../types/supabase';
+
+type Organization = Tables<'organizations'>;
 // subscriptionService removed for MVP
 
 // Definimos un tipo local para facilitar el manejo de la UI basado en la DB real
@@ -16,7 +18,7 @@ type OrganizationWithPlan = OrganizationRow & {
     id: string;
     name: string;
     code: string;
-    monthly_price: number;
+    price_monthly: number;
   } | null;
   subscription_plan_id?: string | null;
 };
@@ -28,10 +30,10 @@ export function SuperAdmin() {
   const { user } = useAuth();
   const [orgs, setOrgs] = useState<OrganizationWithPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [plans, setPlans] = useState<{ id: string; name: string; price: number }[]>([]);
+  const [plans, setPlans] = useState<{ id: string; name: string; price_monthly: number }[]>([]);
 
   const cargarPlanes = useCallback(async () => {
-    const { data: availablePlans } = await supabase.from('subscription_plans').select('id, name, price').order('price'); 
+    const { data: availablePlans } = await supabase.from('subscription_plans').select('id, name, price_monthly').order('price_monthly'); 
     setPlans(availablePlans || []);
   }, []);
 
@@ -46,7 +48,7 @@ export function SuperAdmin() {
           id,
           name,
           code,
-          monthly_price
+          price_monthly
         )
       `)
       .order('created_at', { ascending: false });
@@ -182,8 +184,8 @@ export function SuperAdmin() {
                       </select>
                     </td>
                     <td className="p-4 font-mono text-sm text-stone-700">
-                      {org.subscription_plan?.monthly_price
-                        ? `$${org.subscription_plan.monthly_price}/mes`
+                      {org.subscription_plan?.price_monthly
+                        ? `$${org.subscription_plan.price_monthly}/mes`
                         : '-'}
                     </td>
                     <td className="p-4 font-mono text-stone-600">

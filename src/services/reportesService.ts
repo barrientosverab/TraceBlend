@@ -17,7 +17,7 @@ export const getReporteVentas = async (fechaInicio: string, fechaFin: string, or
   const { data, error } = await supabase
     .from('sales')
     .select(`
-      id, created_at, total_amount,
+      id, created_at, total,
       customer:customers(business_name),
       seller:profiles(first_name),
       items:sale_items (
@@ -122,7 +122,7 @@ export const getSalesReport = async (
   // Fallback: query directa agrupando manualmente
   const { data, error } = await supabase
     .from('sales')
-    .select('total_amount, created_at')
+    .select('total, created_at')
     .eq('organization_id', orgId)
     .eq('status', 'completed')
     .gte('created_at', startDate)
@@ -136,7 +136,7 @@ export const getSalesReport = async (
   (data || []).forEach(s => {
     const period = s.created_at.substring(0, 7);
     if (!grouped[period]) grouped[period] = { total: 0, count: 0 };
-    grouped[period].total += s.total_amount;
+    grouped[period].total += s.total;
     grouped[period].count += 1;
   });
 

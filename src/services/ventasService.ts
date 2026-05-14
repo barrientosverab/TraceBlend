@@ -45,7 +45,6 @@ export const getClientes = async (orgId: string) => {
     tax_id: link.customers?.nit,
     phone: link.customers?.phone,
     email: link.customers?.email,
-    discount_rate: 0,
   }));
 };
 

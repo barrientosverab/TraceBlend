@@ -50,13 +50,6 @@ export type Database = {
             foreignKeyName: "billing_history_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "billing_history_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -94,13 +87,6 @@ export type Database = {
           phone?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "branches_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
           {
             foreignKeyName: "branches_organization_id_fkey"
             columns: ["organization_id"]
@@ -207,13 +193,6 @@ export type Database = {
             foreignKeyName: "customer_org_links_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "customer_org_links_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -279,13 +258,6 @@ export type Database = {
             foreignKeyName: "expense_categories_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "expense_categories_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -342,13 +314,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "expense_categories"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expenses_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "expenses_organization_id_fkey"
@@ -414,20 +379,6 @@ export type Database = {
             foreignKeyName: "organizations_subscription_plan_id_fkey"
             columns: ["subscription_plan_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["plan_id"]
-          },
-          {
-            foreignKeyName: "organizations_subscription_plan_id_fkey"
-            columns: ["subscription_plan_id"]
-            isOneToOne: false
-            referencedRelation: "subscription_plan_features"
-            referencedColumns: ["plan_id"]
-          },
-          {
-            foreignKeyName: "organizations_subscription_plan_id_fkey"
-            columns: ["subscription_plan_id"]
-            isOneToOne: false
             referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
@@ -456,13 +407,6 @@ export type Database = {
           parent_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "product_categories_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
           {
             foreignKeyName: "product_categories_organization_id_fkey"
             columns: ["organization_id"]
@@ -568,13 +512,6 @@ export type Database = {
             foreignKeyName: "products_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "products_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -582,7 +519,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          branch_id: string | null
           created_at: string
           first_name: string
           id: string
@@ -592,7 +528,6 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
-          branch_id?: string | null
           created_at?: string
           first_name: string
           id: string
@@ -602,7 +537,6 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
-          branch_id?: string | null
           created_at?: string
           first_name?: string
           id?: string
@@ -612,20 +546,6 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
         }
         Relationships: [
-          {
-            foreignKeyName: "profiles_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
           {
             foreignKeyName: "profiles_organization_id_fkey"
             columns: ["organization_id"]
@@ -772,13 +692,6 @@ export type Database = {
             foreignKeyName: "sales_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "sales_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -857,13 +770,6 @@ export type Database = {
             foreignKeyName: "supplies_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "supplies_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -916,13 +822,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "branches"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supply_purchases_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "supply_purchases_organization_id_fkey"
@@ -1006,45 +905,10 @@ export type Database = {
             foreignKeyName: "products_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "products_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
-      }
-      organization_subscription_details: {
-        Row: {
-          is_trial_active: boolean | null
-          max_branches: number | null
-          max_users: number | null
-          next_billing_at: string | null
-          org_status: Database["public"]["Enums"]["org_status"] | null
-          organization_id: string | null
-          organization_name: string | null
-          plan_code: string | null
-          plan_id: string | null
-          plan_name: string | null
-          price_monthly: number | null
-          setup_completed: boolean | null
-          trial_days_remaining: number | null
-          trial_ends_at: string | null
-        }
-        Relationships: []
-      }
-      subscription_plan_features: {
-        Row: {
-          feature_name: string | null
-          has_access: boolean | null
-          plan_code: string | null
-          plan_id: string | null
-        }
-        Relationships: []
       }
       v_break_even: {
         Row: {
@@ -1057,13 +921,6 @@ export type Database = {
           total_gastos_fijos: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "expenses_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
           {
             foreignKeyName: "expenses_organization_id_fkey"
             columns: ["organization_id"]
@@ -1084,13 +941,6 @@ export type Database = {
           utilidad_neta: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "sales_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_subscription_details"
-            referencedColumns: ["organization_id"]
-          },
           {
             foreignKeyName: "sales_organization_id_fkey"
             columns: ["organization_id"]
@@ -1302,44 +1152,3 @@ export const Constants = {
     },
   },
 } as const
-
-// ─────────────────────────────────────────────────────
-// CAPA DE COMPATIBILIDAD (Interfaces manuales mapeadas)
-// ─────────────────────────────────────────────────────
-
-export type OrgStatus = Database['public']['Enums']['org_status'];
-export type UserRole = Database['public']['Enums']['user_role'];
-export type PaymentMethodType = Database['public']['Enums']['payment_method_type'];
-
-export type SubscriptionPlan = Tables<'subscription_plans'>;
-export type Organization = Tables<'organizations'>;
-export type Branch = Tables<'branches'>;
-export type Profile = Tables<'profiles'>;
-export type BillingHistory = Tables<'billing_history'>;
-export type Customer = Tables<'customers'>;
-export type CustomerOrgLink = Tables<'customer_org_links'>;
-export type ProductCategory = Tables<'product_categories'>;
-export type Supply = Tables<'supplies'>;
-export type SupplyStock = Tables<'supply_stock'>;
-export type Product = Tables<'products'>;
-export type ProductRecipe = Tables<'product_recipes'>;
-export type Sale = Tables<'sales'>;
-export type SaleItem = Tables<'sale_items'>;
-export type SalePayment = Tables<'sale_payments'>;
-export type ExpenseCategory = Tables<'expense_categories'>;
-export type Expense = Tables<'expenses'>;
-export type SupplyPurchase = Tables<'supply_purchases'>;
-
-// Caja (Mapeo a la nueva tabla cash_register_sessions)
-export type CashSession = Tables<'cash_register_sessions'>;
-export type CashOpening = Tables<'cash_register_sessions'>;
-export type CashClosure = Tables<'cash_register_sessions'>;
-
-// Tipos para formularios e inserciones
-export type OrganizationInsert = TablesInsert<'organizations'>;
-export type BranchInsert = TablesInsert<'branches'>;
-export type ProfileInsert = TablesInsert<'profiles'>;
-export type SaleInsert = TablesInsert<'sales'>;
-export type SaleItemInsert = TablesInsert<'sale_items'>;
-export type ExpenseInsert = TablesInsert<'expenses'>;
-

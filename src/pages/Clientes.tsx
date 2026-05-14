@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getTodosLosClientes, actualizarCliente, toggleEstadoCliente, ClienteForm } from '../services/clientesService';
+import { getTodosLosClientes, actualizarCliente, ClienteForm } from '../services/clientesService';
 import { toast } from 'sonner';
-import { Users, Search, Edit2, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Search, Edit2 } from 'lucide-react';
 // crearCliente - disponible en ventasService para uso futuro
 
 export function Clientes() {
@@ -13,7 +13,7 @@ export function Clientes() {
   
   // Estado formulario edición/creación
   const [form, setForm] = useState<ClienteForm>({
-    business_name: '', tax_id: '', email: '', phone: '', discount_rate: 0, notes: ''
+    business_name: '', tax_id: '', email: '', phone: ''
   });
 
   useEffect(() => { if(orgId) cargar(); }, [orgId]);
@@ -27,8 +27,6 @@ export function Clientes() {
       tax_id: c.tax_id,
       email: c.email,
       phone: c.phone,
-      discount_rate: c.discount_rate || 0,
-      notes: c.notes
     });
   };
 
@@ -67,9 +65,6 @@ export function Clientes() {
                 <td className="p-4 font-mono">{c.tax_id || '-'}</td>
                 <td className="p-4 flex gap-2">
                   <button onClick={() => handleEdit(c)} className="p-2 hover:bg-blue-50 text-blue-600 rounded"><Edit2 size={16}/></button>
-                  <button onClick={() => toggleEstadoCliente(c.id, !c.is_active).then(cargar)} className={`p-2 rounded ${c.is_active ? 'text-green-600 hover:bg-green-50' : 'text-red-400 hover:bg-red-50'}`}>
-                    {c.is_active ? <CheckCircle size={16}/> : <XCircle size={16}/>}
-                  </button>
                 </td>
               </tr>
             ))}
@@ -100,3 +95,4 @@ export function Clientes() {
     </div>
   );
 }
+

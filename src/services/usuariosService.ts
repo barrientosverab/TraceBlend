@@ -1,5 +1,7 @@
 import { supabase, supabaseAdmin } from './supabaseClient';
-import { UserRole } from '../types/supabase';
+import { Tables } from '../types/supabase';
+
+type UserRole = Tables<'profiles'>['role'];
 
 export const getUsuarios = async (orgId: string) => {
   const { data, error } = await supabase
@@ -28,6 +30,7 @@ export interface InvitacionData {
   email: string;
   nombre: string;
   rol: string;
+  branchId?: string;
 }
 
 export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
@@ -70,11 +73,12 @@ export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
       .from('profiles')
       .upsert({
         id: authData.user.id,
-        email: datos.email,
         first_name: datos.nombre,
+        last_name: '',
         role: datos.rol as UserRole,
         organization_id: orgId,
-      }, {
+        branch_id: datos.branchId || null
+      } as any, {
         onConflict: 'id'
       });
 

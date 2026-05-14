@@ -11,22 +11,18 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-
     const verifyStatus = async () => {
       // 1. Si todavía cargamos sesión, esperar.
       if (authLoading) return;
 
-      // 2. CASO CRÍTICO: Usuario logueado pero sin OrgId (Race Condition del Trigger)
-      if (user && !orgId) {
-        // Mantenemos el estado de "Verificando" y reintentamos en 1 segundo
-        // Esto da tiempo a que el Trigger de BD termine de crear la empresa
-        console.log("⏳ Esperando creación de empresa...");
-        return; 
+      // 2. Si no hay usuario, dejamos pasar (el routing se encarga)
+      if (!user) {
+        setIsChecking(false);
+        return;
       }
 
-      // 3. Si no hay usuario ni org (Logout), dejamos de verificar y pasamos control
-      if (!user) {
+      // 3. Si usuario sin org → redirigir a onboarding (se maneja abajo)
+      if (user && !orgId) {
         setIsChecking(false);
         return;
       }
@@ -42,42 +38,26 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
 
           if (data) {
             setIsSetup(data.setup_completed);
-            setIsChecking(false); // ¡Listo! Dejamos de cargar
           }
         } catch (e) {
           console.error("Error verificando setup:", e);
+        } finally {
           setIsChecking(false);
         }
       }
     };
 
-    // Ejecutamos la verificación
     verifyStatus();
-
-    // Si estamos en el caso crítico (user sin org), hacemos polling cada 1s
-    if (user && !orgId && !authLoading) {
-        intervalId = setInterval(() => {
-            // Forzamos una recarga de la página si detectamos que esto tarda mucho
-            // O idealmente llamamos a una función refreshSession() si existiera
-            // Por simplicidad, recargamos la página tras 3 segundos para que useAuth tome los datos nuevos
-            window.location.reload(); 
-        }, 3000);
-    }
-
-    return () => {
-        if (intervalId) clearInterval(intervalId);
-    };
   }, [orgId, user, authLoading]);
 
-  // PANTALLA DE CARGA (Mientras esperamos al Trigger)
-  // PANTALLA DE CARGA (Modificada con botón de salida)
-  if (authLoading || (user && !orgId) || isChecking) {
+  // PANTALLA DE CARGA
+  if (authLoading || isChecking) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-stone-50 p-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-4"></div>
         
         <p className="text-stone-500 font-medium animate-pulse mb-6">
-            {!orgId ? "Configurando tu tostaduría..." : "Verificando cuenta..."}
+            Verificando cuenta...
         </p>
 
         {/* --- BOTÓN DE SALIDA DE EMERGENCIA --- */}
@@ -93,6 +73,11 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
         </button>
       </div>
     );
+  }
+
+  // Si el usuario no tiene organización, redirigir a onboarding
+  if (user && !orgId) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   const onOnboardingPage = location.pathname === '/onboarding';

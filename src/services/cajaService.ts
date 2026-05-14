@@ -169,15 +169,15 @@ export const obtenerResumenCaja = async (
 export const registrarCierre = async (datos: CierreData): Promise<ResultadoCierre> => {
   const { data, error } = await supabase.rpc('close_register_session', {
     p_session_id:   datos.session_id,
-    p_profile_id:   (await supabase.auth.getUser()).data.user?.id,
+    p_profile_id:   (await supabase.auth.getUser()).data.user?.id || '',
     p_closing_cash: datos.closing_cash,
     p_closing_qr:   datos.closing_qr,
     p_closing_card: datos.closing_card,
-    p_note:         datos.note || null,
+    p_note:         datos.note || undefined,
   });
 
   if (error) throw error;
-  return data as ResultadoCierre;
+  return data as unknown as ResultadoCierre;
 };
 
 // ─────────────────────────────────────────────
@@ -227,4 +227,55 @@ export const getCierresHistorico = async (
     closed_at:    s.closed_at,
     status:       s.status,
   }));
+};
+
+// ─────────────────────────────────────────────
+// DETALLE DE CIERRE
+// ─────────────────────────────────────────────
+
+export interface DetalleCierre {
+  cierre: {
+    user_name: string;
+    closed_at: string;
+    created_at: string;
+    opening: number;
+    system_cash: number;
+    closing_cash: number;
+    note: string | null;
+  };
+  ventas: {
+    cash: { total: number; count: number };
+    qr: { total: number; count: number };
+    card: { total: number; count: number };
+  };
+}
+
+export const getDetalleCierre = async (cierreId: string): Promise<DetalleCierre> => {
+  const { data: cierre, error } = await supabase
+    .from('cash_register_sessions')
+    .select(`
+      *,
+      profiles (first_name, last_name)
+    `)
+    .eq('id', cierreId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    cierre: {
+      user_name: cierre.profiles ? `${(cierre.profiles as any).first_name} ${(cierre.profiles as any).last_name}` : 'Desconocido',
+      closed_at: (cierre as any).closed_at || '',
+      created_at: (cierre as any).created_at || '',
+      opening: (cierre as any).opening || 0,
+      system_cash: (cierre as any).system_cash || 0,
+      closing_cash: (cierre as any).closing_cash || 0,
+      note: (cierre as any).note || null,
+    },
+    ventas: {
+      cash: { total: (cierre as any).system_cash || 0, count: 0 },
+      qr: { total: (cierre as any).system_qr || 0, count: 0 },
+      card: { total: (cierre as any).system_card || 0, count: 0 }
+    }
+  };
 };

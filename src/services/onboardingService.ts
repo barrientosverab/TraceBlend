@@ -35,24 +35,24 @@ export const registrarUsuarioInicial = async (datos: { email: string, password: 
  */
 export const crearOrganizacionYVincular = async (userId: string, nombreEmpresa: string) => {
   // 1. Crear Org
-  const { data: org, error: orgError } = await supabase
-    .from('organizations')
-    .insert([{ name: nombreEmpresa, status: 'trial' }])
-    .select()
-    .single();
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .insert([
+        { name: nombreEmpresa, status: 'trial' } as any
+      ])
+      .select()
+      .single();
 
   if (orgError) throw orgError;
 
   // 2. Crear Sucursal Principal
-  const { data: branch, error: branchError } = await supabase
-    .from('branches')
-    .insert([{
-      organization_id: org.id,
-      name: 'Principal',
-      is_main: true
-    }])
-    .select()
-    .single();
+    const { data: branch, error: branchError } = await supabase
+      .from('branches')
+      .insert([
+        { organization_id: org.id, name: 'Principal', is_main: true } as any
+      ])
+      .select()
+      .single();
 
   if (branchError) throw branchError;
 

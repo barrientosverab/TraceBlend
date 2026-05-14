@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { getInsumos, crearInsumo, actualizarInsumo } from '../services/insumosService';
 
 
-interface Insumo { id: string; name: string; unit_measure: string | null; unit_cost: number; is_active: boolean; current_stock: number; min_stock: number; stock_id: string | null; }
+interface Insumo { id: string; name: string; unit_measure: string | null; unit_cost: number; is_active: boolean; current_stock: number; min_quantity: number; stock_id: string | null; }
 
 export function Insumos() {
   const { orgId, branchId } = useAuth();
@@ -25,7 +25,7 @@ export function Insumos() {
     id: '',
     name: '',
     unit_measure: 'ml',
-    min_stock: 1000,
+    min_quantity: 1000,
     
     // DATOS DE COMPRA (Calculadora)
     presentacion_nombre: 'Unidad', 
@@ -74,7 +74,7 @@ export function Insumos() {
     setModoEdicion(false);
     setStockActualBD(0);
     setForm({
-      id: '', name: '', unit_measure: 'ml', min_stock: 500,
+      id: '', name: '', unit_measure: 'ml', min_quantity: 500,
       presentacion_nombre: 'Paquete', contenido_neto: 1000, costo_presentacion: 0, cantidad_comprada: 1,
       fecha_compra: new Date().toISOString().split('T')[0],
       costo_unitario_calculado: 0, stock_calculado: 0
@@ -90,7 +90,7 @@ export function Insumos() {
       id: item.id,
       name: item.name,
       unit_measure: item.unit_measure || 'und',
-      min_stock: item.min_stock ?? 0,
+      min_quantity: item.min_quantity ?? 0,
       
       presentacion_nombre: 'Unidad', // Reseteamos para nueva compra
       contenido_neto: 1, 
@@ -120,7 +120,7 @@ export function Insumos() {
         await actualizarInsumo(form.id, {
           name: form.name,
           unit_measure: form.unit_measure,
-          min_stock: form.min_stock,
+          min_quantity: form.min_quantity,
           current_stock: nuevoStockTotal,
           unit_cost: nuevoCosto
         });
@@ -138,7 +138,7 @@ export function Insumos() {
           organization_id: orgId!,
           name: form.name,
           unit_measure: form.unit_measure,
-          min_stock: form.min_stock,
+          min_quantity: form.min_quantity,
           current_stock: form.stock_calculado,
           unit_cost: form.costo_unitario_calculado
         }, orgId!, branchId || '');
@@ -201,7 +201,7 @@ export function Insumos() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtrados.map(item => {
               const stock = item.current_stock ?? 0;
-              const umbral = item.min_stock ?? 0;
+              const umbral = item.min_quantity ?? 0;
               const isLow = stock <= umbral;
               
               return (
@@ -286,7 +286,7 @@ export function Insumos() {
                     <div>
                         <label className="text-xs font-bold text-stone-500 uppercase block mb-1">Stock M�nimo (Alerta)</label>
                         <input type="number" className="w-full p-3 border border-stone-200 rounded-xl outline-none bg-stone-50 focus:bg-white" 
-                            value={form.min_stock} onChange={e => setForm({...form, min_stock: Number(e.target.value)})} />
+                            value={form.min_quantity} onChange={e => setForm({...form, min_quantity: Number(e.target.value)})} />
                     </div>
 
                     {modoEdicion && (

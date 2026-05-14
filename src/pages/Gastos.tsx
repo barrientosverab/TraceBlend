@@ -15,7 +15,7 @@ import { PricingCalculator } from '../components/finance/PricingCalculator';
 // ProyeccionesPanel removed for MVP
 
 export function Gastos() {
-  const { orgId } = useAuth();
+  const { orgId, branchId, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'libro' | 'presupuestos' | 'proyecciones' | 'config' | 'calculador'>('libro');
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +29,7 @@ export function Gastos() {
 
   // Formularios
   const [nuevoFijo, setNuevoFijo] = useState<any>({ name: '', amount: '', category: 'otros', frequency: 'mensual', cost_center: 'otro' });
-  const [nuevoPago, setNuevoPago] = useState<RegistroPagoForm>({ description: '', amount: '', payment_date: new Date().toISOString().split('T')[0], payment_method: 'transferencia', expense_category_id: '' });
+  const [nuevoPago, setNuevoPago] = useState<RegistroPagoForm>({ description: '', amount: '', expense_date: new Date().toISOString().split('T')[0], payment_method: 'transferencia', category_id: '' });
 
   useEffect(() => {
     if (orgId) cargarDatos();
@@ -52,7 +52,7 @@ export function Gastos() {
     if (!nuevoFijo.name || !nuevoFijo.amount) return toast.warning("Datos incompletos");
     setLoading(true);
     try {
-      await crearGastoFijo(nuevoFijo, orgId!);
+      await crearGastoFijo(nuevoFijo, orgId!, branchId!, user!.id);
       toast.success("Gasto recurrente guardado");
       setNuevoFijo({ name: '', amount: '', category: 'otros', frequency: 'mensual', cost_center: 'otro' });
       cargarDatos();
@@ -67,9 +67,9 @@ export function Gastos() {
     if (!nuevoPago.amount || !nuevoPago.description) return toast.warning("Indica monto y concepto");
     setLoading(true);
     try {
-      await registrarPago(nuevoPago, orgId!);
+      await registrarPago(nuevoPago, orgId!, branchId!, user!.id);
       toast.success("Pago registrado");
-      setNuevoPago({ ...nuevoPago, description: '', amount: '', expense_category_id: '' });
+      setNuevoPago({ ...nuevoPago, description: '', amount: '', category_id: '' });
       cargarDatos();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al registrar pago';
@@ -82,7 +82,7 @@ export function Gastos() {
   const prellenarPago = (gastoFijo: any) => {
     setNuevoPago({
       ...nuevoPago,
-      expense_category_id: gastoFijo.id,
+      category_id: gastoFijo.id,
       description: `Pago: ${gastoFijo.name}`,
       amount: gastoFijo.amount
     });
@@ -228,10 +228,10 @@ export function Gastos() {
                 </h3>
 
                 <div className="space-y-4">
-                  {nuevoPago.expense_category_id && (
+                  {nuevoPago.category_id && (
                     <div className="bg-blue-50 text-blue-800 p-3 rounded-xl text-sm flex justify-between items-center animate-in fade-in zoom-in">
                       <span className="truncate mr-2">Pagar: <b>{nuevoPago.description.replace('Pago: ', '')}</b></span>
-                      <button onClick={() => setNuevoPago({ ...nuevoPago, expense_category_id: '', description: '', amount: '' })} className="bg-blue-100 p-1 rounded-full hover:bg-blue-200"><X size={14} /></button>
+                      <button onClick={() => setNuevoPago({ ...nuevoPago, category_id: '', description: '', amount: '' })} className="bg-blue-100 p-1 rounded-full hover:bg-blue-200"><X size={14} /></button>
                     </div>
                   )}
 
@@ -250,7 +250,7 @@ export function Gastos() {
                     </div>
                     <div>
                       <label className="text-xs font-bold text-stone-400 uppercase">Fecha</label>
-                      <input type="date" className="w-full p-3 border rounded-xl mt-1 text-sm bg-white outline-none" value={nuevoPago.payment_date} onChange={e => setNuevoPago({ ...nuevoPago, payment_date: e.target.value })} />
+                      <input type="date" className="w-full p-3 border rounded-xl mt-1 text-sm bg-white outline-none" value={nuevoPago.expense_date} onChange={e => setNuevoPago({ ...nuevoPago, expense_date: e.target.value })} />
                     </div>
                   </div>
 
