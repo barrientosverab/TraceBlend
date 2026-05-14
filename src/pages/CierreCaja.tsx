@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { registrarCierre, obtenerResumenCaja, CierreData } from '../services/cajaService';
+import { registrarCierre, obtenerResumenCaja } from '../services/cajaService';
 import { toast } from 'sonner';
 import { Calculator, Save, Lock, AlertTriangle, CheckCircle2, TrendingDown } from 'lucide-react';
 
@@ -8,6 +8,8 @@ import { Calculator, Save, Lock, AlertTriangle, CheckCircle2, TrendingDown } fro
 export function CierreCaja() {
   const { orgId, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [opening, setOpening] = useState<number>(0);
   
   // Estado del Sistema (Lo que dice la BD)
   const [sistema, setSistema] = useState({
@@ -29,25 +31,20 @@ export function CierreCaja() {
     if (orgId && user) cargarDatos();
   }, [orgId, user]);
 
-const cargarDatos = async () => {
+  const cargarDatos = async () => {
     try {
-      const data = await obtenerResumenCaja(orgId!, user!.id);
-      // Forzamos el tipo para que TS sepa qué viene
-      const datosDB = data as unknown as {
-          initial_cash: number;
-          total_sales_cash: number;
-          total_qr: number;
-          total_card: number;
-          total_system_cash: number;
-      };
+      const datosDB = await obtenerResumenCaja(orgId!, user!.id);
       
-      if (datosDB) {
+      if (datosDB && datosDB.session_id) {
+        setSessionId(datosDB.session_id);
+        setOpening(datosDB.opening || 0);
         setSistema({
-          // El efectivo total debe ser: Lo que había al inicio + Ventas Efectivo
-          efectivo: (datosDB.initial_cash || 0) + (datosDB.total_sales_cash || 0),
-          qr: datosDB.total_qr || 0,
-          tarjeta: datosDB.total_card || 0
+          efectivo: datosDB.system_cash || 0,
+          qr: datosDB.system_qr || 0,
+          tarjeta: datosDB.system_card || 0
         });
+      } else {
+        toast.info("No hay una caja abierta actualmente");
       }
     } catch (e) {
       toast.error("Error cargando datos de caja");
@@ -55,25 +52,25 @@ const cargarDatos = async () => {
   };
 
   const handleCierre = async () => {
+    if (!sessionId) return toast.error("No hay una sesión de caja activa");
     if (!declarado.efectivo) return toast.warning("Debes contar el efectivo");
     
     setLoading(true);
     try {
-        const datosEnvio: CierreData = {
-            system_cash: sistema.efectivo,
-            system_qr: sistema.qr,
-            system_card: sistema.tarjeta,
-            declared_cash: Number(declarado.efectivo) || 0,
-            declared_qr: Number(declarado.qr) || 0,
-            declared_card: Number(declarado.tarjeta) || 0,
-            cash_withdrawals: Number(declarado.gastos) || 0,
-            notes: declarado.notas
-        };
+        await registrarCierre({
+          session_id: sessionId,
+          closing_cash: Number(declarado.efectivo) || 0,
+          closing_qr: Number(declarado.qr) || 0,
+          closing_card: Number(declarado.tarjeta) || 0,
+          note: declarado.notas || undefined,
+        });
 
-        await registrarCierre(datosEnvio, orgId!, user!.id);
         toast.success("Caja cerrada correctamente");
         // Reiniciar o redirigir
         setDeclarado({ efectivo: '', qr: '', tarjeta: '', gastos: '', notas: '' });
+        setSessionId(null);
+        setOpening(0);
+        setSistema({ efectivo: 0, qr: 0, tarjeta: 0 });
         cargarDatos();
     } catch (error: any) {
         toast.error("Error al cerrar caja");
@@ -86,8 +83,8 @@ const cargarDatos = async () => {
   const efectivoReal = Number(declarado.efectivo) || 0;
   const gastosCaja = Number(declarado.gastos) || 0;
   
-  // Diferencia: (Lo que tengo + Lo que gasté) - (Lo que debería tener)
-  const diferencia = (efectivoReal + gastosCaja) - sistema.efectivo;
+  // Diferencia: (Lo que tengo + Lo que gasté) - (Lo que debería tener + apertura)
+  const diferencia = (efectivoReal + gastosCaja) - (opening + sistema.efectivo);
   const cuadraPerfecto = Math.abs(diferencia) < 0.5; // Margen pequeño por redondeos
 
   return (
@@ -108,6 +105,10 @@ const cargarDatos = async () => {
             </h2>
 
             <div className="space-y-6">
+                <div className="flex justify-between items-center px-4">
+                    <span className="text-stone-500 text-sm">Fondo inicial</span>
+                    <span className="font-mono font-bold text-stone-600">Bs {opening.toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between items-center p-4 bg-stone-50 rounded-2xl border border-stone-100">
                     <span className="text-stone-600 font-medium">Ventas Efectivo</span>
                     <span className="text-2xl font-mono font-bold text-stone-800">Bs {sistema.efectivo.toFixed(2)}</span>
@@ -125,7 +126,7 @@ const cargarDatos = async () => {
             <div className="mt-8 pt-6 border-t border-stone-100">
                 <div className="flex justify-between items-center">
                     <span className="text-stone-800 font-bold">Total Esperado</span>
-                    <span className="text-3xl font-bold text-emerald-600">Bs {(sistema.efectivo + sistema.qr + sistema.tarjeta).toFixed(2)}</span>
+                    <span className="text-3xl font-bold text-emerald-600">Bs {(opening + sistema.efectivo + sistema.qr + sistema.tarjeta).toFixed(2)}</span>
                 </div>
             </div>
         </div>

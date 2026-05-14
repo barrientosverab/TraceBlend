@@ -11,12 +11,12 @@ import {
   getMonthlySales, RegistroPagoForm
 } from '../services/gastosService';
 import { PricingCalculator } from '../components/finance/PricingCalculator';
-import { CuentasPanel } from '../components/finance/CuentasPanel';
+
 // ProyeccionesPanel removed for MVP
 
 export function Gastos() {
   const { orgId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'libro' | 'cuentas' | 'presupuestos' | 'proyecciones' | 'config' | 'calculador'>('libro');
+  const [activeTab, setActiveTab] = useState<'libro' | 'presupuestos' | 'proyecciones' | 'config' | 'calculador'>('libro');
   const [loading, setLoading] = useState(false);
 
   // Datos
@@ -121,9 +121,7 @@ export function Gastos() {
           <button onClick={() => setActiveTab('libro')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'libro' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <LayoutList size={18} /> Libro Diario
           </button>
-          <button onClick={() => setActiveTab('cuentas')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'cuentas' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
-            <CreditCard size={18} /> Cuentas
-          </button>
+
           <button onClick={() => setActiveTab('presupuestos')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'presupuestos' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <Wallet size={18} /> Presupuestos
           </button>
@@ -373,10 +371,7 @@ export function Gastos() {
           </div>
         )}
 
-        {/* --- PESTAA 3: CUENTAS --- */}
-        {activeTab === 'cuentas' && (
-          <CuentasPanel />
-        )}
+
 
         {/* --- PESTAÑA 6: CALCULADOR DE PRECIOS --- */}
         {activeTab === 'calculador' && (

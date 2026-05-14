@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 
 import {
   getClientes, getCatalogoVentas, registrarVenta,
-  crearCliente, getPedidosPendientes, getDetallePedidoPendiente,
-  marcarPedidoComoCompletado, ItemCarrito
+  crearCliente, ItemCarrito,
+  getPedidosPendientes, marcarPedidoComoCompletado
 } from '../services/ventasService';
 import { verificarEstadoCaja } from '../services/cajaService';
 // Promociones removed for MVP
@@ -119,7 +119,7 @@ export function usePOS() {
     setVerificandoCaja(true);
     try {
         // Validación de Apertura (Caja Abierta/Cerrada)
-      const respuesta = await verificarEstadoCaja(orgId, user.id);
+      const respuesta = await verificarEstadoCaja(user.id);
       const estado = respuesta as { status: string };
       const estaAbierta = estado?.status === 'open';
       setCajaAbierta(estaAbierta);
@@ -214,8 +214,11 @@ export function usePOS() {
   }, [carrito, esCortesiaGlobal, descuentoManual, convenioActivo]);
 
   // Transacciones Financieras / Back-end (Database & Edge Cases)
-  const procesarVenta = async (paymentsConfirmed: Payment[], status: 'completed' | 'pending' = 'completed') => {
+  const procesarVenta = async (paymentsConfirmed: Payment[], status?: 'completed' | 'pending') => {
     if (!orgId || !user) throw new Error("Requiere autenticación");
+
+    // Mapear status del UI al ENUM de la BD (sale_status)
+    const saleStatus: 'completado' | 'pendiente' = status === 'pending' ? 'pendiente' : 'completado';
 
     setLoading(true);
     try {
@@ -248,14 +251,9 @@ export function usePOS() {
         total: totalesTicket.totalFinal,
         payments: paymentsConfirmed,
         tipoPedido: tipoPedido
-      }, orgId, user.id, branchId || '', status);
+      }, orgId, user.id, branchId || '', saleStatus);
 
-      if (status === 'completed') {
-        toast.success("Venta cobrada correctamente");
-      } else {
-        toast.info("Pedido guardado en espera");
-        cargarTodo(); // Recargar listado de pendientes
-      }
+      toast.success(saleStatus === 'pendiente' ? "Pedido guardado como pendiente" : "Venta cobrada correctamente");
 
       // Reinicio Seguro / Limpieza Completa al Finalizar
       setCarrito([]);
@@ -291,22 +289,15 @@ export function usePOS() {
   const recuperarPedidoPendiente = async (pedidoId: string) => {
     setLoading(true);
     try {
-      const { order, items } = await getDetallePedidoPendiente(pedidoId);
-      setCarrito(items);
-      // Supabase devuelve `clients` como objeto (no como array) en la cláusula .select()
-      const clienteData = Array.isArray(order.customers) ? order.customers[0] : order.customers;
-      setClienteSeleccionado({
-        id: clienteData?.id ?? '',
-        business_name: clienteData?.business_name ?? 'Cliente Casual',
-        tax_id: clienteData?.tax_id ?? ''
-      });
-      setTipoPedido(order.order_type);
+      // Marcar como completado en la BD y quitar de la lista local
       await marcarPedidoComoCompletado(pedidoId);
       setPendientes(prev => prev.filter(p => p.id !== pedidoId));
-      toast.success("Pedido cargado al carrito lista para su cobro");
+      // Recargar datos para reflejar el cambio
+      await cargarTodo();
+      toast.success("Pedido marcado como completado");
       return true;
     } catch (e: unknown) {
-      toast.error((e as Error).message || "Error cargando pedido");
+      toast.error((e as Error).message || "Error completando pedido");
       return false;
     } finally {
       setLoading(false);

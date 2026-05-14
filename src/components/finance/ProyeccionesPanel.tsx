@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'sonner';
 import { 
@@ -8,8 +8,11 @@ import {
   TrendingUp, TrendingDown, RefreshCcw, AlertTriangle, CalendarDays
 } from 'lucide-react';
 import { 
-  getHistoricalFinancials, getPendingAccounts, HistoricalFinancial
+  getHistoricalFinancials, HistoricalFinancial
 } from '../../services/gastosService';
+// TODO: getPendingAccounts fue eliminado — las tablas accounts_receivable/accounts_payable no existen en la BD
+// import { getPendingAccounts } from '../../services/gastosService';
+const getPendingAccounts = async (_orgId: string) => ({ receivables: [] as any[], payables: [] as any[] });
 
 export function ProyeccionesPanel() {
   const { orgId } = useAuth();
