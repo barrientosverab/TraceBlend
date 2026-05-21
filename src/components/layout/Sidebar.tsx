@@ -4,15 +4,15 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   LayoutDashboard, ShoppingBag, Users, Settings, LogOut,
   Menu, X, Coffee, Calculator, UserPlus,
-  Package, Archive, DollarSign, TrendingUp,
-  Shield
+  Package, DollarSign, TrendingUp,
+  Shield, BarChart2, Building2
 } from 'lucide-react';
 
 const SUPER_ADMIN_EMAIL = "barrientosverab@gmail.com";
 
 const MENU_GROUPS = [
   {
-    title: 'Principal',
+    title: 'Operaciones',
     items: [
       { path: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['all'], feature: 'dashboard' },
       { path: '/ventas', icon: ShoppingBag, label: 'Punto de Venta', roles: ['admin', 'cashier'], feature: 'pos' },
@@ -20,19 +20,26 @@ const MENU_GROUPS = [
     ]
   },
   {
-    title: 'Gestión',
+    title: 'Catálogo',
     items: [
-      { path: '/gastos', icon: DollarSign, label: 'Finanzas', roles: ['admin'], feature: 'finance' },
-      { path: '/punto-equilibrio', icon: TrendingUp, label: 'Punto de Eq.', roles: ['admin'], feature: 'finance' },
-      { path: '/productos', icon: Package, label: 'Catálogo Maestro', roles: ['admin'], feature: 'catalog' },
+      { path: '/productos', icon: Coffee, label: 'Productos', roles: ['admin'], feature: 'catalog' },
+      { path: '/insumos', icon: Package, label: 'Insumos', roles: ['admin'], feature: 'inventory' },
     ]
   },
   {
-    title: 'Director',
+    title: 'Finanzas',
+    items: [
+      { path: '/gastos', icon: DollarSign, label: 'Gastos', roles: ['admin'], feature: 'finance' },
+      { path: '/punto-equilibrio', icon: TrendingUp, label: 'Punto de Eq.', roles: ['admin'], feature: 'finance' },
+      { path: '/reportes', icon: BarChart2, label: 'Reportes', roles: ['admin'], feature: 'reports' },
+    ]
+  },
+  {
+    title: 'Directorio',
     items: [
       { path: '/usuarios', icon: Users, label: 'Equipo', roles: ['admin'], feature: 'team' },
       { path: '/clientes', icon: UserPlus, label: 'CRM Clientes', roles: ['admin', 'cashier'], feature: 'crm' },
-      { path: '/reportes', icon: Archive, label: 'Reportes', roles: ['admin'], feature: 'reports' },
+      { path: '/sucursales', icon: Building2, label: 'Sucursales', roles: ['admin'], feature: 'team' },
     ]
   }
 ];

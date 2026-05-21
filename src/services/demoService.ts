@@ -7,10 +7,10 @@ export const generarDatosDemo = async (orgId: string, branchId: string) => {
 
   // 1. CREAR INSUMOS
   const insumosData = [
-    { name: 'Leche Entera', unit_measure: 'L', unit_cost: 6 },
-    { name: 'Café Verde (Caturra)', unit_measure: 'Kg', unit_cost: 45 },
-    { name: 'Vasos 8oz', unit_measure: 'Und', unit_cost: 0.5 },
-    { name: 'Azúcar Morena', unit_measure: 'Kg', unit_cost: 8 },
+    { name: 'Leche Entera', unit: 'L', unit_cost: 6 },
+    { name: 'Café Verde (Caturra)', unit: 'Kg', unit_cost: 45 },
+    { name: 'Vasos 8oz', unit: 'Und', unit_cost: 0.5 },
+    { name: 'Azúcar Morena', unit: 'Kg', unit_cost: 8 },
   ];
 
   const { data: insumos } = await supabase
@@ -24,7 +24,7 @@ export const generarDatosDemo = async (orgId: string, branchId: string) => {
       supply_id: ins.id,
       branch_id: branchId,
       quantity: [50, 100, 500, 10][idx] || 0,
-      min_stock: [10, 20, 50, 2][idx] || 0,
+      min_quantity: [10, 20, 50, 2][idx] || 0,
     }));
 
     await supabase.from('supply_stock').insert(stockData);
@@ -70,7 +70,7 @@ export const generarDatosDemo = async (orgId: string, branchId: string) => {
         branch_id: branchId,
         total: total,
         created_at: fecha.toISOString(),
-        sale_status: 'completed'
+        sale_status: 'completado'
       } as any)
       .select()
       .single();

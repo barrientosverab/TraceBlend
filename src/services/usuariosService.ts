@@ -69,21 +69,16 @@ export const invitarUsuario = async (datos: InvitacionData, orgId: string) => {
     if (!authData.user) throw new Error('No se pudo crear el usuario');
 
     // PASO 2: Crear/actualizar el perfil con organization_id y branch_id
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: authData.user.id,
-        first_name: datos.nombre,
-        last_name: '',
-        role: datos.rol as UserRole,
-        organization_id: orgId,
-        branch_id: datos.branchId || null
-      } as any, {
-        onConflict: 'id'
-      });
+    const { error: profileError } = await (supabase.rpc as any)('setup_invited_user', {
+      p_user_id: authData.user.id,
+      p_organization_id: orgId,
+      p_role: datos.rol,
+      p_first_name: datos.nombre,
+      p_branch_id: datos.branchId || null,
+    });
 
     if (profileError) {
-      console.error('Error creating profile:', profileError);
+      console.error('Error updating profile:', profileError);
       throw new Error(`Error al crear perfil: ${profileError.message}`);
     }
 

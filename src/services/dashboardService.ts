@@ -17,11 +17,12 @@ export const getDashboardMetrics = async (orgId: string): Promise<DashboardData>
   const hoy = new Date().toISOString().split('T')[0];
   const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-  // 1. VENTAS (Hoy y Mes) — sin filtro de status (columna no existe), total en vez de total_amount
+  // 1. VENTAS (Hoy y Mes) — filtro sale_status = completado
   const { data: ventas } = await supabase
     .from('sales')
     .select('total, created_at')
     .eq('organization_id', orgId)
+    .eq('sale_status', 'completado')
     .gte('created_at', inicioMes);
 
   const ventasHoyArr = ventas?.filter(v => v.created_at && v.created_at.startsWith(hoy)) || [];
@@ -69,6 +70,7 @@ export const getDashboardMetrics = async (orgId: string): Promise<DashboardData>
     .from('sales')
     .select('id, total, created_at')
     .eq('organization_id', orgId)
+    .eq('sale_status', 'completado')
     .order('created_at', { ascending: false })
     .limit(8);
 

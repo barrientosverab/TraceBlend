@@ -27,7 +27,7 @@ export const getReporteVentas = async (fechaInicio: string, fechaFin: string, or
       payments:sale_payments(payment_method, amount)
     `)
     .eq('organization_id', orgId)
-    .eq('status', 'completed')
+    .eq('sale_status', 'completado')
     .gte('created_at', fechaInicio)
     .lte('created_at', fechaFin)
     .order('created_at', { ascending: false });
@@ -124,7 +124,7 @@ export const getSalesReport = async (
     .from('sales')
     .select('total, created_at')
     .eq('organization_id', orgId)
-    .eq('status', 'completed')
+    .eq('sale_status', 'completado')
     .gte('created_at', startDate)
     .lte('created_at', endDate)
     .order('created_at');

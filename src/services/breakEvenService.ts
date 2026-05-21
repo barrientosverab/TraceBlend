@@ -44,7 +44,7 @@ export const calculateBreakEven = async (orgId: string): Promise<BreakEvenMetric
     .select('amount, expense_categories!inner(type)')
     .eq('organization_id', orgId)
     .eq('expense_categories.type', 'fixed')
-    .gte('payment_date', inicioMes);
+    .gte('expense_date', inicioMes);
   
   const gastosFijosMes = fijos?.reduce((sum: number, f: any) => sum + f.amount, 0) || 1200; // Valor fallback si no hay datos
 
@@ -53,7 +53,7 @@ export const calculateBreakEven = async (orgId: string): Promise<BreakEvenMetric
     .from('sales')
     .select('total')
     .eq('organization_id', orgId)
-    .eq('status', 'completed')
+    .eq('sale_status', 'completado')
     .gte('created_at', inicioMes);
 
   let ticketPromedio = 15; // Valor fallback

@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 interface RecetaItem {
   supply_id: string;
   supply_name?: string;
-  unit_measure?: string;
+  unit?: string;
   unit_cost?: number;
   quantity_required: number;
 }
@@ -18,7 +18,7 @@ export const getProductosParaRecetas = async (orgId: string) => {
       id, name, sale_price, is_active, category_id,
       product_recipes (
         id, supply_id, quantity_required, condition,
-        supplies ( name, unit_measure, unit_cost )
+        supplies ( name, unit, unit_cost )
       )
     `)
     .eq('organization_id', orgId)
@@ -45,7 +45,7 @@ export const getProductosParaRecetas = async (orgId: string) => {
         id: r.id,
         supply_id: r.supply_id,
         supply_name: r.supplies?.name || 'Insumo',
-        unit_measure: r.supplies?.unit_measure || 'und',
+        unit: r.supplies?.unit || 'und',
         unit_cost: r.supplies?.unit_cost || 0,
         quantity_required: r.quantity_required,
         condition: r.condition || 'always',
@@ -91,7 +91,7 @@ export const guardarRecetas = async (productId: string, items: RecetaItem[], _or
 export const getInsumosParaRecetas = async (orgId: string) => {
   const { data, error } = await supabase
     .from('supplies')
-    .select('id, name, unit_measure, unit_cost')
+    .select('id, name, unit, unit_cost')
     .eq('organization_id', orgId)
     .eq('is_active', true)
     .order('name');

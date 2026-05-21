@@ -5,14 +5,14 @@ import { LogOut } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 
 export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
-  const { orgId, user, loading: authLoading } = useAuth();
+  const { orgId, user, profile, loading: authLoading } = useAuth();
   const [isSetup, setIsSetup] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
     const verifyStatus = async () => {
-      // 1. Si todavía cargamos sesión, esperar.
+      // 1. Si todavía cargamos sesión de auth, esperar.
       if (authLoading) return;
 
       // 2. Si no hay usuario, dejamos pasar (el routing se encarga)
@@ -21,8 +21,13 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // 3. Si usuario sin org → redirigir a onboarding (se maneja abajo)
-      if (user && !orgId) {
+      // Si el usuario existe pero el perfil aún no ha cargado, esperar
+      if (user && profile === null) {
+        return;
+      }
+
+      // 3. Si usuario sin org → redirigir a onboarding
+      if (user && profile && !orgId) {
         setIsChecking(false);
         return;
       }
@@ -48,16 +53,19 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
     };
 
     verifyStatus();
-  }, [orgId, user, authLoading]);
+  }, [orgId, user, profile, authLoading]);
+
+  const isProfileLoading = user && profile === null;
+  const loading = authLoading || isChecking || isProfileLoading;
 
   // PANTALLA DE CARGA
-  if (authLoading || isChecking) {
+  if (loading) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-stone-50 p-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-4"></div>
         
         <p className="text-stone-500 font-medium animate-pulse mb-6">
-            Verificando cuenta...
+            Verificando acceso...
         </p>
 
         {/* --- BOTÓN DE SALIDA DE EMERGENCIA --- */}
@@ -75,15 +83,17 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Si el usuario no tiene organización, redirigir a onboarding
-  if (user && !orgId) {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user && !profile?.organization_id) {
     return <Navigate to="/onboarding" replace />;
   }
 
   const onOnboardingPage = location.pathname === '/onboarding';
 
   // REDIRECCIONES (Semáforos)
-
   // A. Si ya configuró (TRUE) y quiere ver Onboarding -> Al Dashboard
   if (isSetup === true && onOnboardingPage) {
     return <Navigate to="/" replace />;
@@ -95,5 +105,9 @@ export const SetupGuard = ({ children }: { children: React.ReactNode }) => {
   }
 
   // C. Todo correcto -> Renderizar contenido
+  if (user && profile?.organization_id) {
+    return <>{children}</>;
+  }
+
   return <>{children}</>;
 };

@@ -28,9 +28,9 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     console.error("Error fetching profile:", error);
     return null;
   }
-  
-  return { 
-    id: data.id || user.id, 
+
+  return {
+    id: data.id || user.id,
     email: user.email,
     organization_id: data.organization_id,
     branch_id: data.branch_id,

@@ -8,8 +8,8 @@ interface StockAlert {
     id: string;
     name: string;
     current_stock: number;
-    min_stock: number;
-    unit_measure: string;
+    min_quantity: number;
+    unit: string;
     deficit: number;
     severity: 'critical' | 'high' | 'medium';
 }
@@ -27,7 +27,7 @@ export function StockAlerts() {
                 // Query supply_stock + supplies directamente (sin vista)
                 const { data, error } = await supabase
                     .from('supply_stock')
-                    .select('id, quantity, min_stock, supplies!inner(name, unit_measure, organization_id)')
+                    .select('id, quantity, min_quantity, supplies!inner(name, unit, organization_id)')
                     .eq('supplies.organization_id', orgId)
                     .limit(20);
 
@@ -35,17 +35,17 @@ export function StockAlerts() {
 
                 // Filtrar y mapear alertas
                 const alertas: StockAlert[] = (data || [])
-                    .filter((item: any) => item.min_stock && item.quantity <= item.min_stock)
+                    .filter((item: any) => item.min_quantity && item.quantity <= item.min_quantity)
                     .map((item: any) => {
-                        const deficit = item.min_stock - item.quantity;
-                        const severity: 'critical' | 'high' | 'medium' = item.quantity === 0 ? 'critical' : deficit > item.min_stock * 0.5 ? 'high' : 'medium';
+                        const deficit = item.min_quantity - item.quantity;
+                        const severity: 'critical' | 'high' | 'medium' = item.quantity === 0 ? 'critical' : deficit > item.min_quantity * 0.5 ? 'high' : 'medium';
                         return {
                             type: 'insumo' as const,
                             id: item.id,
                             name: item.supplies?.name || 'Insumo',
                             current_stock: item.quantity,
-                            min_stock: item.min_stock,
-                            unit_measure: item.supplies?.unit_measure || 'und',
+                            min_quantity: item.min_quantity,
+                            unit: item.supplies?.unit || 'und',
                             deficit,
                             severity
                         };
@@ -145,14 +145,14 @@ export function StockAlerts() {
                                         {alert.type === 'insumo' ? 'Insumo' : 'Producto'}
                                     </span>
                                     <span className="text-xs text-stone-600">
-                                        Stock: {alert.current_stock} {alert.unit_measure}
+                                        Stock: {alert.current_stock} {alert.unit}
                                     </span>
                                 </div>
                             </div>
                         </div>
                         <div className="text-right flex-shrink-0 ml-2">
                             <p className="text-xs text-stone-500">Mínimo</p>
-                            <p className="font-bold text-sm">{alert.min_stock}</p>
+                            <p className="font-bold text-sm">{alert.min_quantity}</p>
                         </div>
                     </div>
                 ))}

@@ -38,6 +38,7 @@ const ReporteVentasDia = lazy(() => import('./pages/ReporteVentasDia').then(m =>
 // Finanzas
 const Gastos = lazy(() => import('./pages/Gastos').then(m => ({ default: m.Gastos })));
 const Insumos = lazy(() => import('./pages/Insumos').then(m => ({ default: m.Insumos })));
+const Sucursales = lazy(() => import('./pages/Sucursales').then(m => ({ default: m.Sucursales })));
 const PuntoEquilibrio = lazy(() => import('./pages/PuntoEquilibrio').then(m => ({ default: m.PuntoEquilibrio })));
 
 // Componente de Carga
@@ -113,6 +114,7 @@ function App() {
                     <Route path="/gastos" element={<PermissionGuard feature="finance"><Gastos /></PermissionGuard>} />
                     <Route path="/insumos" element={<PermissionGuard feature="inventory"><Insumos /></PermissionGuard>} />
                     <Route path="/cierres-historico" element={<PermissionGuard feature="cash_close"><HistorialCierres /></PermissionGuard>} />
+                    <Route path="/sucursales" element={<PermissionGuard feature="team"><Sucursales /></PermissionGuard>} />
                   </Route>
                 </Route>
 
