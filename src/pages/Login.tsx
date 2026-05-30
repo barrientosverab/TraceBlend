@@ -1,4 +1,4 @@
-﻿import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -32,14 +32,21 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-900 flex items-center justify-center p-4">
+    <div 
+      className="min-h-screen bg-stone-900 flex items-center justify-center p-4"
+      style={{
+        backgroundImage: 'url("/imagen_de_fondo.png")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}
+    >
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
         <div className="bg-emerald-900 p-8 text-center">
           <div className="w-16 h-16 bg-emerald-800 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Coffee size={32} className="text-emerald-100" />
           </div>
           <h1 className="text-2xl font-bold text-white">Trace Blend</h1>
-          <p className="text-emerald-200 text-sm">Sistema de Gestión de Tostaduría</p>
+          <p className="text-emerald-200 text-sm">Sistema de Gestión de Cafeterias</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
