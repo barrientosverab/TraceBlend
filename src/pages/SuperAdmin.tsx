@@ -104,8 +104,8 @@ export function SuperAdmin() {
       .from('organizations')
       .update({
         status: 'active',
-        plan: 'tostador',
-        next_payment_date: nuevaFecha.toISOString()
+        subscription_plan_id: '810815f6-3eeb-448a-a147-6c43b619550a', // Tostador plan
+        next_billing_at: nuevaFecha.toISOString()
       })
       .eq('id', orgId);
 
