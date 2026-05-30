@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { TrendingUp, Info, Save, Calculator, CheckCircle } from 'lucide-react';
 import { 
@@ -15,6 +15,7 @@ export function PuntoEquilibrio() {
   const [config, setConfig] = useState<BreakEvenConfig>({ margenContribucionPct: 60, diasAperturaMes: 22 });
   const [metrics, setMetrics] = useState<BreakEvenMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
 
   const loadData = async () => {
     if (!orgId) return;
@@ -65,15 +66,19 @@ export function PuntoEquilibrio() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <label className="text-xs font-bold text-stone-500 uppercase">Margen de Contribución (%)</label>
-                <div className="relative group flex items-center">
-                  <Info className="text-emerald-500 cursor-help" size={16} />
+                <div className="relative flex items-center">
+                  <button type="button" onClick={() => setTooltipVisible(!tooltipVisible)} className="text-emerald-500 cursor-help">
+                    <Info size={16} />
+                  </button>
                   {/* Tooltip personalizado */}
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-64 bg-stone-900 text-white text-xs p-3 rounded-xl shadow-xl z-10 pointer-events-none fade-in">
-                    <p className="font-bold text-emerald-400 mb-1">Ejemplo práctico:</p>
-                    <p>Si vendes un café en Bs 20, y los ingredientes (leche, café, vaso) te cuestan Bs 8, te quedan Bs 12.</p>
-                    <p className="mt-1">Tus Bs 12 representan un <strong>60% de Margen</strong> para "contribuir" a pagar el alquiler y los sueldos fijos.</p>
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-stone-900 rotate-45"></div>
-                  </div>
+                  {tooltipVisible && (
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-stone-900 text-white text-xs p-3 rounded-xl shadow-xl z-10">
+                      <p className="font-bold text-emerald-400 mb-1">Ejemplo práctico:</p>
+                      <p>Si vendes un café en Bs 20, y los ingredientes (leche, café, vaso) te cuestan Bs 8, te quedan Bs 12.</p>
+                      <p className="mt-1">Tus Bs 12 representan un <strong>60% de Margen</strong> para "contribuir" a pagar el alquiler y los sueldos fijos.</p>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-stone-900 rotate-45"></div>
+                    </div>
+                  )}
                 </div>
               </div>
               <input 

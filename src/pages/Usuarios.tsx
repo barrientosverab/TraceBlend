@@ -131,8 +131,8 @@ export function Usuarios() {
       )}
 
       {/* TABLA USUARIOS */}
-      <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden overflow-x-auto">
+        <table className="w-full text-left min-w-[600px]">
           <thead className="bg-stone-50 text-stone-500 text-xs font-bold uppercase">
             <tr><th className="p-4">Usuario</th><th className="p-4">Email</th><th className="p-4">Rol</th></tr>
           </thead>

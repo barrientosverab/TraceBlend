@@ -52,8 +52,8 @@ export function Clientes() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex-1 overflow-y-auto">
-        <table className="w-full text-left text-sm">
+      <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex-1 overflow-y-auto overflow-x-auto">
+        <table className="w-full text-left text-sm min-w-[600px]">
           <thead className="bg-stone-50 text-stone-500 font-bold uppercase">
             <tr><th className="p-4">Cliente</th><th className="p-4">Contacto</th><th className="p-4">NIT/CI</th><th className="p-4">Acciones</th></tr>
           </thead>
@@ -79,7 +79,7 @@ export function Clientes() {
             <h3 className="font-bold text-lg mb-4">Editar Cliente</h3>
             <div className="space-y-3">
               <input className="w-full p-2 border rounded" placeholder="Razón Social" value={form.business_name} onChange={e=>setForm({...form, business_name: e.target.value})}/>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input className="w-full p-2 border rounded" placeholder="NIT/CI" value={form.tax_id || ''} onChange={e=>setForm({...form, tax_id: e.target.value})}/>
                 <input className="w-full p-2 border rounded" placeholder="Teléfono" value={form.phone || ''} onChange={e=>setForm({...form, phone: e.target.value})}/>
               </div>

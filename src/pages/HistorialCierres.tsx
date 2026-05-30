@@ -176,7 +176,7 @@ export function HistorialCierres() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[700px]">
                             <thead className="bg-stone-50 border-b border-stone-200">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-bold text-stone-600 uppercase">Fecha/Hora</th>
@@ -275,7 +275,7 @@ export function HistorialCierres() {
                                         <TrendingUp size={18} />
                                         Apertura de Caja
                                     </h3>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-xs text-blue-600 mb-1">Monto Inicial</p>
                                             <p className="text-2xl font-bold font-mono text-blue-900">
@@ -297,7 +297,7 @@ export function HistorialCierres() {
                                         <DollarSign size={18} />
                                         Ventas del Turno
                                     </h3>
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         <div className="bg-white p-3 rounded-lg border border-emerald-200">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <Banknote size={16} className="text-emerald-600" />

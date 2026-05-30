@@ -117,21 +117,21 @@ export function Gastos() {
 
       {/* HEADER TABS RESPONSIVO */}
       <div className="bg-white border-b border-stone-200 px-4 py-3 flex flex-col md:flex-row md:items-center justify-between shadow-sm z-10 gap-3">
-        <div className="flex gap-2 w-full md:w-auto">
-          <button onClick={() => setActiveTab('libro')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'libro' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+        <div className="flex gap-2 w-full md:w-auto overflow-x-auto scrollbar-none snap-x pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap">
+          <button onClick={() => setActiveTab('libro')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'libro' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <LayoutList size={18} /> Libro Diario
           </button>
 
-          <button onClick={() => setActiveTab('presupuestos')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'presupuestos' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+          <button onClick={() => setActiveTab('presupuestos')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'presupuestos' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <Wallet size={18} /> Presupuestos
           </button>
-          <button onClick={() => setActiveTab('proyecciones')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'proyecciones' ? 'bg-emerald-600 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+          <button onClick={() => setActiveTab('proyecciones')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'proyecciones' ? 'bg-emerald-600 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <TrendingUp size={18} /> Proyecciones
           </button>
-          <button onClick={() => setActiveTab('calculador')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'calculador' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+          <button onClick={() => setActiveTab('calculador')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'calculador' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <Calculator size={18} /> Calculador
           </button>
-          <button onClick={() => setActiveTab('config')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'config' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
+          <button onClick={() => setActiveTab('config')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'config' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
             <Settings size={18} /> Configuraci�n
           </button>
         </div>
@@ -240,7 +240,7 @@ export function Gastos() {
                     <input className="w-full p-3 border rounded-xl mt-1 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Compra de Leche" value={nuevoPago.description} onChange={e => setNuevoPago({ ...nuevoPago, description: e.target.value })} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-bold text-stone-400 uppercase">Monto</label>
                       <div className="relative mt-1">
@@ -278,8 +278,8 @@ export function Gastos() {
                 </div>
 
                 {/* Vista Desktop (Tabla) */}
-                <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-                  <table className="w-full text-left text-sm">
+                <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden overflow-x-auto">
+                  <table className="w-full text-left text-sm min-w-[600px]">
                     <thead className="bg-stone-50 text-stone-400 font-bold border-b border-stone-100">
                       <tr><th className="p-4">Fecha</th><th className="p-4">Concepto</th><th className="p-4">Categor�a</th><th className="p-4">C. Costo</th><th className="p-4 text-right">Monto</th></tr>
                     </thead>

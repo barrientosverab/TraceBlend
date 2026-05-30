@@ -3,7 +3,7 @@ import {
   ShoppingCart, Search, Package, Trash2, CheckCircle,
   Tag, Gift, Coffee, Utensils, Box,
   UserPlus, X, Users, Percent,
-  Clock, AlertCircle, Plus, Minus
+  Clock, AlertCircle, Plus, Minus, LayoutGrid
 } from 'lucide-react';
 import { usePOS, ClientePayload, ClientePOS } from '../hooks/usePOS';
 import { AperturaCaja } from './AperturaCaja';
@@ -32,6 +32,7 @@ export function Ventas() {
   const [mostrarResultadosClientes, setMostrarResultadosClientes] = useState(false);
   const [catFiltro, setCatFiltro] = useState('all');
   const [busquedaProd, setBusquedaProd] = useState('');
+  const [vistaMovil, setVistaMovil] = useState<'catalogo' | 'ticket'>('catalogo');
   
   const [showModalPago, setShowModalPago] = useState(false); 
   const [showModalCliente, setShowModalCliente] = useState(false);
@@ -123,10 +124,10 @@ export function Ventas() {
   if (cajaAbierta === null) return <div className="h-screen flex items-center justify-center text-stone-400">Verificando caja...</div>;
 
   return (
-    <div className="flex h-screen bg-stone-100 overflow-hidden relative">
+    <div className="flex flex-col md:flex-row h-screen bg-stone-100 overflow-hidden relative">
       {/* PANEL IZQUIERDO: CATÁLOGO */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-stone-200 p-2 flex gap-2 overflow-x-auto">
+      <div className={`flex-1 flex-col overflow-hidden ${vistaMovil === 'catalogo' ? 'flex' : 'hidden'} md:flex`}>
+        <div className="bg-white border-b border-stone-200 p-2 flex gap-2 overflow-x-auto pl-14 md:pl-2">
           {CATEGORIAS.map(cat => (
             <button key={cat.id} onClick={() => setCatFiltro(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${catFiltro === cat.id ? 'bg-stone-800 text-white shadow-md' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'}`}>
               <cat.icon size={16} /> {cat.label}
@@ -141,7 +142,7 @@ export function Ventas() {
             </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 content-start">
+        <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 content-start">
           {productosVisibles.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
               <Package className="w-20 h-20 text-stone-300 mb-4" />
@@ -155,7 +156,7 @@ export function Ventas() {
             </div>
           ) : (
             productosVisibles.map(p => (
-              <button key={p.id} onClick={() => actions.agregarAlCarrito(p)} className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:border-emerald-500 transition-all text-left h-32 flex flex-col justify-between relative overflow-hidden group">
+              <button key={p.id} onClick={() => { actions.agregarAlCarrito(p); setVistaMovil('ticket'); }} className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:border-emerald-500 transition-all text-left h-32 flex flex-col justify-between relative overflow-hidden group">
                 {p.promo_activa && <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold shadow-sm">Oferta</div>}
                 <div>
                     <h4 className="font-bold text-stone-800 leading-tight line-clamp-2 group-hover:text-emerald-700 transition-colors">{p.nombre}</h4>
@@ -176,7 +177,7 @@ export function Ventas() {
       </div>
 
       {/* PANEL DERECHO: TICKET */}
-      <div className="w-96 bg-white shadow-2xl z-20 flex flex-col border-l border-stone-200">
+      <div className={`bg-white shadow-2xl z-20 flex-col border-l border-stone-200 ${vistaMovil === 'ticket' ? 'flex w-full' : 'hidden'} md:flex md:w-96`}>
         <div className="p-4 bg-stone-50 border-b border-stone-200 flex gap-2">
           <button onClick={() => actions.setTipoPedido('dine_in')} className={`flex-1 py-2 text-sm font-bold rounded-lg border flex items-center justify-center gap-2 transition-all ${tipoPedido === 'dine_in' ? 'bg-white border-emerald-500 text-emerald-700 shadow-sm' : 'border-transparent text-stone-400'}`}>🍽️ Mesa</button>
           <button onClick={() => actions.setTipoPedido('takeaway')} className={`flex-1 py-2 text-sm font-bold rounded-lg border flex items-center justify-center gap-2 transition-all ${tipoPedido === 'takeaway' ? 'bg-white border-amber-500 text-amber-700 shadow-sm' : 'border-transparent text-stone-400'}`}>🥡 Para Llevar</button>
@@ -288,6 +289,29 @@ export function Ventas() {
             {loading ? 'Procesando...' : <><CheckCircle size={20} /> Cobrar</>}
           </button>
         </div>
+      </div>
+
+      {/* BARRA TABS MÓVIL */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 flex md:hidden z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+        <button
+          onClick={() => setVistaMovil('catalogo')}
+          className={`flex-1 py-3 flex flex-col items-center gap-1 text-xs font-bold transition-colors ${vistaMovil === 'catalogo' ? 'text-emerald-600' : 'text-stone-400'}`}
+        >
+          <LayoutGrid size={20} />
+          Catálogo
+        </button>
+        <button
+          onClick={() => setVistaMovil('ticket')}
+          className={`flex-1 py-3 flex flex-col items-center gap-1 text-xs font-bold relative transition-colors ${vistaMovil === 'ticket' ? 'text-emerald-600' : 'text-stone-400'}`}
+        >
+          <ShoppingCart size={20} />
+          {carrito.length > 0 && (
+            <span className="absolute top-2 right-1/4 bg-emerald-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-sm">
+              {carrito.length}
+            </span>
+          )}
+          Ticket
+        </button>
       </div>
 
       {/* MODALES: Cliente y Pendientes */}

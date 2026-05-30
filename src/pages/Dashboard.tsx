@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getDashboardMetrics, DashboardData } from '../services/dashboardService';
 import { StockAlerts } from '../components/StockAlerts';
@@ -10,6 +11,7 @@ import {
 
 export function Dashboard() {
   const { profile, orgId } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,7 +139,7 @@ export function Dashboard() {
           <h3 className="font-bold text-lg text-stone-800 mb-4">Accesos Rápidos</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
-              onClick={() => window.location.href = '/cierres-historico'}
+              onClick={() => navigate('/cierres-historico')}
               className="p-4 bg-gradient-to-br from-emerald-50 to-white rounded-xl border border-emerald-200 hover:border-emerald-400 transition-all hover:shadow-md group"
             >
               <div className="flex items-center gap-3">

@@ -139,7 +139,8 @@ export function SuperAdmin() {
         </h1>
 
         <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm min-w-[600px]">
             <thead className="bg-stone-50 text-stone-500 font-bold uppercase">
               <tr>
                 <th className="p-4">Organización</th>
@@ -220,6 +221,7 @@ export function SuperAdmin() {
               })}
             </tbody>
           </table>
+          </div>
           {orgs.length === 0 && <div className="p-12 text-center text-stone-400">No hay organizaciones registradas en el sistema.</div>}
         </div>
       </div>
