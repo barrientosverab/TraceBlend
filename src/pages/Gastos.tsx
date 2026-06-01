@@ -4,18 +4,21 @@ import {
   LayoutList, Settings, Wallet, X, TrendingUp, Calculator
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 import {
   getGastosFijos, crearGastoFijo, registrarPago, getHistorialPagos, eliminarGasto,
   getMonthlySales, RegistroPagoForm
 } from '../services/gastosService';
+import { crearProducto } from '../services/productosService';
 import { PricingCalculator } from '../components/finance/PricingCalculator';
 
 // ProyeccionesPanel removed for MVP
 
 export function Gastos() {
   const { orgId, branchId, user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'libro' | 'presupuestos' | 'proyecciones' | 'config' | 'calculador'>('libro');
   const [loading, setLoading] = useState(false);
 
@@ -132,7 +135,7 @@ export function Gastos() {
             <Calculator size={18} /> Calculador
           </button>
           <button onClick={() => setActiveTab('config')} className={`flex-1 md:flex-none justify-center px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'config' ? 'bg-stone-900 text-white shadow-md' : 'bg-stone-100 text-stone-500'}`}>
-            <Settings size={18} /> Configuraci�n
+            <Settings size={18} /> Gastos Fijos
           </button>
         </div>
 
@@ -375,7 +378,23 @@ export function Gastos() {
 
         {/* --- PESTAÑA 6: CALCULADOR DE PRECIOS --- */}
         {activeTab === 'calculador' && (
-          <PricingCalculator />
+          <PricingCalculator
+            orgId={orgId!}
+            onGuardarProducto={async (producto) => {
+              try {
+                await crearProducto({
+                  name: producto.name,
+                  sku: null,
+                  sale_price: producto.sale_price,
+                  receta: producto.receta,
+                }, orgId!);
+                toast.success('Producto creado exitosamente');
+                navigate('/productos');
+              } catch (e: any) {
+                toast.error(e.message);
+              }
+            }}
+          />
         )}
 
       </div>

@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Calculator, Settings, PieChart as PieChartIcon } from 'lucide-react';
+import { Plus, Trash2, Calculator, Settings, PieChart as PieChartIcon, Database, PenLine } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { supabase } from '../../services/supabaseClient';
 
 const ingredientSchema = z.object({
     name: z.string().min(1, 'Requerido'),
@@ -11,6 +12,8 @@ const ingredientSchema = z.object({
     quantity: z.number().min(0.0001, 'Debe ser > 0'),
     costPrice: z.number().min(0, 'Costo inválido'),
     merma: z.number().min(0).max(99),
+    supply_id: z.string().optional(),
+    es_registrado: z.boolean().optional(),
 });
 
 const recipeSchema = z.object({
@@ -24,18 +27,53 @@ const recipeSchema = z.object({
 
 type RecipeForm = z.infer<typeof recipeSchema>;
 
+interface InsumoDBItem {
+    id: string;
+    name: string;
+    unit: string;
+    cost_per_unit: number;
+}
+
+interface PricingCalculatorProps {
+    orgId: string;
+    onGuardarProducto?: (producto: {
+        name: string;
+        sale_price: number;
+        receta: Array<{
+            supply_id: string;
+            quantity: number;
+            nombre_insumo?: string;
+            unidad?: string;
+        }>;
+    }) => void;
+}
+
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#ef4444'];
 const PROFIT_COLOR = '#10b981'; // Emerald
 const OVERHEAD_COLOR = '#94a3b8'; // Slate
 
-export function PricingCalculator() {
+export function PricingCalculator({ orgId, onGuardarProducto }: PricingCalculatorProps) {
+    const [insumosDB, setInsumosDB] = useState<InsumoDBItem[]>([]);
+    const [modoIngrediente, setModoIngrediente] = useState<'registrado' | 'manual'>('registrado');
+
+    // Cargar insumos de la organización
+    useEffect(() => {
+        if (orgId) {
+            supabase
+                .from('supplies')
+                .select('id, name, unit, cost_per_unit')
+                .eq('organization_id', orgId)
+                .then(({ data }) => setInsumosDB(data || []));
+        }
+    }, [orgId]);
+
     const { register, control, watch, formState: { errors } } = useForm<RecipeForm>({
         resolver: zodResolver(recipeSchema),
         defaultValues: {
             productName: '',
             sellingPrice: 0,
             ingredients: [
-                { name: '', type: 'peso', quantity: 0, costPrice: 0, merma: 0 }
+                { name: '', type: 'peso', quantity: 0, costPrice: 0, merma: 0, supply_id: '', es_registrado: false }
             ],
             overhead: 0,
         }
@@ -93,6 +131,30 @@ export function PricingCalculator() {
         return data;
     }, [calculations, formValues.overhead]);
 
+    // Guardar como producto
+    const handleGuardarComoProducto = () => {
+        if (!onGuardarProducto) return;
+
+        const ingredientesRegistrados = formValues.ingredients
+            .filter(ing => ing.supply_id)
+            .map(ing => ({
+                supply_id: ing.supply_id!,
+                quantity: ing.quantity,
+                nombre_insumo: ing.name,
+                unidad: ing.type === 'peso' ? 'g' : ing.type === 'volumen' ? 'ml' : 'ud',
+            }));
+
+        onGuardarProducto({
+            name: formValues.productName,
+            sale_price: formValues.sellingPrice,
+            receta: ingredientesRegistrados,
+        });
+    };
+
+    // Check if we can show the save button
+    const tieneNombre = formValues.productName?.trim().length > 0;
+    const tieneIngredientesRegistrados = formValues.ingredients.some(ing => ing.supply_id);
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             {/* Columna Izquierda: El Constructor */}
@@ -127,17 +189,40 @@ export function PricingCalculator() {
 
                     <hr className="border-stone-100" />
 
-                    {/* Lista de Ingredientes */}
+                    {/* Toggle Modo Ingrediente */}
                     <div>
                         <div className="flex justify-between items-end mb-4">
                             <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider">Ingredientes / Insumos</h3>
+                            <div className="flex bg-stone-100 rounded-lg p-0.5 text-xs font-bold">
+                                <button
+                                    type="button"
+                                    onClick={() => setModoIngrediente('registrado')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${modoIngrediente === 'registrado'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-stone-500 hover:text-stone-700'
+                                    }`}
+                                >
+                                    <Database size={12} /> Registrado
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setModoIngrediente('manual')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${modoIngrediente === 'manual'
+                                        ? 'bg-white text-amber-700 shadow-sm'
+                                        : 'text-stone-500 hover:text-stone-700'
+                                    }`}
+                                >
+                                    <PenLine size={12} /> Manual
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-3">
                             {fields.map((field, index) => {
                                 const type = watch(`ingredients.${index}.type`);
+                                const esRegistrado = watch(`ingredients.${index}.es_registrado`);
                                 return (
-                                    <div key={field.id} className="bg-stone-50 border border-stone-200 rounded-xl p-3 relative group">
+                                    <div key={field.id} className={`border rounded-xl p-3 relative group ${esRegistrado ? 'bg-emerald-50/50 border-emerald-200' : 'bg-stone-50 border-stone-200'}`}>
                                         <button
                                             type="button"
                                             onClick={() => remove(index)}
@@ -145,6 +230,13 @@ export function PricingCalculator() {
                                         >
                                             <Trash2 size={14} />
                                         </button>
+
+                                        {/* Badge de tipo */}
+                                        {esRegistrado && (
+                                            <div className="absolute top-2 right-8 bg-emerald-100 text-emerald-700 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full">
+                                                DB
+                                            </div>
+                                        )}
 
                                         <div className="grid grid-cols-12 gap-3 items-end">
                                             <div className="col-span-4">
@@ -177,18 +269,68 @@ export function PricingCalculator() {
                                             <label className="text-[10px] font-bold text-stone-400 mr-2">Merma / Pérdida (%):</label>
                                             <input type="number" step="any" {...register(`ingredients.${index}.merma`, { valueAsNumber: true })} className="w-16 p-1 text-xs border rounded bg-white text-right" placeholder="0" />
                                         </div>
+
+                                        {/* Hidden fields for supply tracking */}
+                                        <input type="hidden" {...register(`ingredients.${index}.supply_id`)} />
+                                        <input type="hidden" {...register(`ingredients.${index}.es_registrado`)} />
                                     </div>
                                 );
                             })}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => append({ name: '', type: 'peso', quantity: 0, costPrice: 0, merma: 0 })}
-                            className="mt-4 w-full py-3 border-2 border-dashed border-stone-200 text-stone-500 font-bold rounded-xl hover:bg-stone-50 hover:border-emerald-300 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2 text-sm"
-                        >
-                            <Plus size={16} /> Añadir Ingrediente o Insumo
-                        </button>
+                        {/* Botones para agregar según modo */}
+                        {modoIngrediente === 'registrado' && insumosDB.length > 0 ? (
+                            <div className="mt-4 space-y-2">
+                                <select
+                                    className="w-full p-3 border-2 border-dashed border-emerald-200 rounded-xl bg-emerald-50/50 text-sm font-medium text-stone-700 outline-none focus:border-emerald-400 transition-colors"
+                                    value=""
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            const insumo = insumosDB.find(i => i.id === e.target.value);
+                                            if (insumo) {
+                                                const unitLower = insumo.unit?.toLowerCase() || '';
+                                                let typeVal: 'peso' | 'volumen' | 'unidad' = 'unidad';
+                                                if (unitLower.includes('kg') || unitLower.includes('g')) typeVal = 'peso';
+                                                else if (unitLower.includes('l') || unitLower.includes('ml')) typeVal = 'volumen';
+
+                                                append({
+                                                    name: insumo.name,
+                                                    type: typeVal,
+                                                    quantity: 0,
+                                                    costPrice: insumo.cost_per_unit,
+                                                    merma: 0,
+                                                    supply_id: insumo.id,
+                                                    es_registrado: true,
+                                                });
+                                            }
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                >
+                                    <option value="">＋ Seleccionar insumo registrado...</option>
+                                    {insumosDB.map(insumo => (
+                                        <option key={insumo.id} value={insumo.id}>
+                                            {insumo.name} — Bs {insumo.cost_per_unit}/{insumo.unit}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => append({ name: '', type: 'peso', quantity: 0, costPrice: 0, merma: 0, supply_id: '', es_registrado: false })}
+                                    className="w-full py-2 text-stone-400 hover:text-stone-600 text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                                >
+                                    <PenLine size={12} /> o agregar manualmente
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => append({ name: '', type: 'peso', quantity: 0, costPrice: 0, merma: 0, supply_id: '', es_registrado: false })}
+                                className="mt-4 w-full py-3 border-2 border-dashed border-stone-200 text-stone-500 font-bold rounded-xl hover:bg-stone-50 hover:border-emerald-300 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2 text-sm"
+                            >
+                                <Plus size={16} /> Añadir Ingrediente o Insumo
+                            </button>
+                        )}
                     </div>
 
                     <hr className="border-stone-100" />
@@ -311,6 +453,18 @@ export function PricingCalculator() {
                         </div>
                     </div>
                 </div>
+
+                {/* Botón Guardar como Producto */}
+                {onGuardarProducto && tieneNombre && tieneIngredientesRegistrados && (
+                    <button
+                        type="button"
+                        onClick={handleGuardarComoProducto}
+                        className="w-full mt-4 bg-green-600 hover:bg-green-700 active:scale-95 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Guardar como Producto
+                    </button>
+                )}
             </div>
         </div>
     );
