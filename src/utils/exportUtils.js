@@ -30,7 +30,7 @@ export const exportarExcel = async (data, fileName = 'Reporte') => {
   saveAs(blob, `${fileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
 };
 
-export const exportarPDF = (data, titulo, orgName = "Mi Tostaduría") => {
+export const exportarPDF = (data, titulo, orgName = "Mi Cafetería") => {
   const doc = new jsPDF();
 
   doc.setFontSize(18);

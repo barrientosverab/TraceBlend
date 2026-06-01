@@ -62,7 +62,7 @@ export function Onboarding() {
               <Coffee size={24} />
             </div>
             <h1 className="text-xl font-bold">Bienvenido, {profile?.first_name}</h1>
-            <p className="text-stone-400 text-sm mt-2">Configura tu tostaduría para comenzar a trabajar.</p>
+            <p className="text-stone-400 text-sm mt-2">Configura tu cafetería para comenzar a trabajar.</p>
           </div>
           <div className="hidden md:block mt-8 space-y-3 text-stone-500 text-xs">
             <div className="flex items-center gap-2">
@@ -126,7 +126,7 @@ export function Onboarding() {
             disabled={loading}
             className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex justify-center items-center gap-2 mt-2 transition-all shadow-lg shadow-emerald-200"
           >
-            {loading ? <Loader2 className="animate-spin" /> : 'Crear mi Tostaduría'}
+            {loading ? <Loader2 className="animate-spin" /> : 'Crear mi Cafetería'}
           </button>
         </form>
       </div>

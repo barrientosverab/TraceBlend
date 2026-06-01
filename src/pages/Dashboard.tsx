@@ -39,7 +39,7 @@ export function Dashboard() {
           <h1 className="text-3xl font-bold text-stone-800">
             Hola, {profile?.first_name || 'Admin'} 👋
           </h1>
-          <p className="text-stone-500 mt-1">Aquí tienes el pulso de tu tostaduría hoy.</p>
+          <p className="text-stone-500 mt-1">Aquí tienes el pulso de tu cafeteria hoy.</p>
         </div>
         <div className="bg-white px-4 py-2 rounded-full border border-stone-200 shadow-sm flex items-center gap-2 text-sm font-bold text-stone-600">
           <Calendar size={16} className="text-emerald-600" />

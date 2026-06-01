@@ -50,7 +50,7 @@ describe('Login', () => {
             renderLogin();
 
             expect(screen.getByText('Trace Blend')).toBeInTheDocument();
-            expect(screen.getByText('Sistema de Gestión de Tostaduría')).toBeInTheDocument();
+            expect(screen.getByText('Sistema de Gestión de Cafeterias')).toBeInTheDocument();
             expect(screen.getByPlaceholderText('Correo electrónico')).toBeInTheDocument();
             expect(screen.getByPlaceholderText('Contraseña')).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /ingresar/i })).toBeInTheDocument();

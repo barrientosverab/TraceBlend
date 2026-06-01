@@ -85,7 +85,7 @@ describe('Registro', () => {
 
             // Should show step 2
             await waitFor(() => {
-                expect(screen.getByText('2. Tu Tostaduría')).toBeInTheDocument();
+                expect(screen.getByText('2. Tu Cafetería')).toBeInTheDocument();
             });
         });
 
@@ -105,7 +105,7 @@ describe('Registro', () => {
 
             // Should stay on step 1 (error messages would appear)
             expect(screen.getByText('1. Tus Datos')).toBeInTheDocument();
-            expect(screen.queryByText('2. Tu Tostaduría')).not.toBeInTheDocument();
+            expect(screen.queryByText('2. Tu Cafetería')).not.toBeInTheDocument();
         });
     });
 
@@ -117,7 +117,7 @@ describe('Registro', () => {
             await user.type(screen.getByPlaceholderText('Contraseña segura'), 'password123');
             await user.click(screen.getByRole('button', { name: /siguiente/i }));
             await waitFor(() => {
-                expect(screen.getByText('2. Tu Tostaduría')).toBeInTheDocument();
+                expect(screen.getByText('2. Tu Cafetería')).toBeInTheDocument();
             });
         };
 
@@ -170,7 +170,7 @@ describe('Registro', () => {
             await user.click(screen.getByRole('button', { name: /siguiente/i }));
 
             await waitFor(() => {
-                expect(screen.getByText('2. Tu Tostaduría')).toBeInTheDocument();
+                expect(screen.getByText('2. Tu Cafetería')).toBeInTheDocument();
             });
 
             // Go back
@@ -195,7 +195,7 @@ describe('Registro', () => {
             await user.click(screen.getByRole('button', { name: /siguiente/i }));
 
             await waitFor(() => {
-                expect(screen.getByText('2. Tu Tostaduría')).toBeInTheDocument();
+                expect(screen.getByText('2. Tu Cafetería')).toBeInTheDocument();
             });
 
             // Step 2
@@ -332,7 +332,7 @@ describe('Registro', () => {
             await user.click(screen.getByRole('button', { name: /siguiente/i }));
 
             await waitFor(() => {
-                expect(screen.getByText('2. Tu Tostaduría')).toBeInTheDocument();
+                expect(screen.getByText('2. Tu Cafetería')).toBeInTheDocument();
             });
 
             // Fill only org name, leave NIT empty

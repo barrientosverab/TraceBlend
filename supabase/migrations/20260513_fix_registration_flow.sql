@@ -59,7 +59,7 @@ BEGIN
         status
     )
     VALUES (
-        COALESCE(new.raw_user_meta_data->>'org_name', 'Mi Tostaduría'),
+        COALESCE(new.raw_user_meta_data->>'org_name', 'Mi Cafetería'),
         COALESCE(new.raw_user_meta_data->>'tax_id', ''),
         'No especificada',
         v_trial_plan_id,

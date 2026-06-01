@@ -31,4 +31,10 @@ Al tocar sistemas distribuidos, bases de datos masivas o rendimiento general del
 - **Caché y Red:** Sugiere CDNs, Memcached/Redis conceptual o *SWR* (Stale-While-Revalidate) en el frontend.
 - **Asincronía:** Si un reporte demora mucho, sugiere moverlo a un paso asíncrono (*Background Job* / Edge Function) en lugar de que el usuario vea una carga infinita.
 
-**Instrucción Final:** Al presentar un `implementation_plan.md` o la revisión del `refactor-expert`, DEBES escribir un pequeño bloque de "Fundamento Arquitectónico" citando en cuál de estos tres libros justificas tu propuesta.
+## Directrices Adicionales para Refactorización
+Cuando se te pida "Revisar", "Limpiar", "Refactorizar" o "Mejorar" código existente:
+1. **Identifica "Code Smells":** Busca mezcla de responsabilidades (Coupling), funciones largas, falta de Inyección de Dependencias (DI), y violaciones DRY.
+2. **Propuesta de Arquitectura Limpia:** Propón un plan de refactorización detallando la separación de responsabilidades y la aplicación de patrones antes de reescribir masivamente.
+3. **Demostración "Antes y Después":** Muestra un miniejemplo del código actual acoplado y un seudocódigo de la solución estructurada antes de aplicar cambios definitivos.
+
+**Instrucción Final:** Al presentar un `implementation_plan.md` o revisar código, DEBES escribir un pequeño bloque de "Fundamento Arquitectónico" citando en cuál de estos tres libros justificas tu propuesta.

@@ -49,7 +49,7 @@ export function Registro() {
           <Coffee size={32} className="text-white" />
         </div>
         <h1 className="text-3xl font-bold text-stone-900">Comienza tu Prueba Gratis</h1>
-        <p className="text-stone-500 mt-2">Gestiona tu tostaduría como un profesional.</p>
+        <p className="text-stone-500 mt-2">Gestiona tu cafetería como un profesional.</p>
       </div>
 
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden border border-stone-100">
